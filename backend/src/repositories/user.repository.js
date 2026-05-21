@@ -29,6 +29,8 @@ class UserRepository {
         userInstance.lastLogin = new Date();
         return await userInstance.save();
     }
+
+
 }
 
 export default new UserRepository();

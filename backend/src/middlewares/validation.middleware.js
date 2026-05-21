@@ -35,3 +35,44 @@ export const handleValidationErrors = (req, res, next) => {
     // Nếu dữ liệu đầu vào sạch và hoàn toàn hợp lệ, cho phép đi tiếp vào controller
     next();
 };
+/**
+ * 3. Quy tắc kiểm tra dữ liệu đầu vào cho cổng Đăng ký (Register)
+ */
+export const registerValidator = [
+    body("fullName")
+        .notEmpty().withMessage("Họ và tên không được để trống!")
+        .isLength({ min: 2, max: 100 }).withMessage("Họ và tên phải từ 2 đến 100 ký tự!"),
+
+    body("email")
+        .notEmpty().withMessage("Email không được để trống!")
+        .isEmail().withMessage("Email không đúng định dạng hợp lệ!")
+        .normalizeEmail(),
+
+    body("password")
+        .notEmpty().withMessage("Mật khẩu không được để trống!")
+        .isLength({ min: 6 }).withMessage("Mật khẩu bắt buộc phải từ 6 ký tự trở lên!")
+];
+
+/**
+ * 4. Quy tắc kiểm tra dữ liệu cho cổng Quên mật khẩu (Forgot Password)
+ */
+export const forgotPasswordValidator = [
+    body("email")
+        .notEmpty().withMessage("Vui lòng nhập địa chỉ Email của bạn!")
+        .isEmail().withMessage("Địa chỉ Email không đúng định dạng hợp lệ!")
+        .normalizeEmail()
+];
+/**
+ * 5. Quy tắc kiểm tra dữ liệu đầu vào cho cổng Đổi mật khẩu mới (Reset Password)
+ */
+export const resetPasswordValidator = [
+    body("userId")
+        .notEmpty().withMessage("Thiếu thông tin ID người dùng!"),
+
+    body("token")
+        .notEmpty().withMessage("Thiếu mã xác thực token khôi phục!"),
+
+    body("newPassword")
+        .notEmpty().withMessage("Mật khẩu mới không được để trống!")
+        .isLength({ min: 6 }).withMessage("Mật khẩu mới bắt buộc phải từ 6 ký tự trở lên!")
+];
