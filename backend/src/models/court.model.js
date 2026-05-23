@@ -26,9 +26,12 @@ const courtSchema = new mongoose.Schema({
         required: true
     },
 
-    images: [{
-        type: String
-    }],
+    images: [
+        {
+            imageUrl: { type: String, required: true },
+            publicId: { type: String, required: true }
+        }
+    ],
 
     description: {
         type: String

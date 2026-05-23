@@ -4,6 +4,11 @@ import Register from "../features/auth/pages/Register";
 import ForgotPassword from "../features/auth/pages/ForgotPassword";
 import ResetPassword from "../features/auth/pages/ResetPassword";
 
+import MainLayout from "../layouts/MainLayout.jsx";
+import Home from "../features/home/pages/Home";
+import CourtList from "../features/court/pages/CourtList";
+import CourtDetail from "../features/court/pages/CourtDetail";
+
 export const router = createBrowserRouter([
     {
         path: "/login",
@@ -20,6 +25,25 @@ export const router = createBrowserRouter([
     {
         path: "/reset-password",
         element: <ResetPassword />,
+    },
+    {
+        // 🎯 KHUNG TRỤ CỘT BAO BỌC CHO TOÀN BỘ CÁC TRANG XEM SÂN CÔNG KHAI
+        path: "/",
+        element: <MainLayout />,
+        children: [
+            {
+                path: "/",
+                element: <Home />,
+            },
+            {
+                path: "/courts",
+                element: <CourtList />,
+            },
+            {
+                path: "/courts/:id",
+                element: <CourtDetail />,
+            }
+        ]
     },
     {
         path: "/user/profile",

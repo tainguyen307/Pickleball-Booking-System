@@ -5,6 +5,7 @@ import cors from "cors";
 
 import { connectDB } from "./config/db.js"; //
 import authRoutes from "./routes/auth.routes.js";
+import courtRoutes from "./routes/court.routes.js";
 
 const app = express();
 
@@ -16,6 +17,7 @@ await connectDB(); //
 
 // 2. Cấu hình các tuyến đường API
 app.use("/api/auth", authRoutes);
+app.use("/api/courts", courtRoutes);
 
 // 3. ĐÂY LÀ DÒNG QUAN TRỌNG: Giúp server treo liên tục để lắng nghe request từ Postman
 const PORT = process.env.PORT || 5000;
