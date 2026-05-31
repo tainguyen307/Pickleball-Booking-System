@@ -20,7 +20,16 @@ const storage = new CloudinaryStorage({
         transformation: [{ width: 1200, height: 800, crop: "limit", quality: "auto" }] // Tự động nén tối ưu dung lượng ảnh sản phẩm
     }
 });
+// Thiết lập bộ lưu trữ riêng cho Avatar của User
+const avatarStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "PickleballPro_Media/avatar_users", // 🎯 Chỉ định đích danh đường dẫn folder con
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
+        transformation: [{ width: 400, height: 400, crop: "limit", quality: "auto" }]
+    }
+});
 
-const uploadCloud = multer({ storage });
-
-export { cloudinary, uploadCloud };
+// Tạo ra 2 middleware riêng biệt để xuất khẩu (Export)
+export const uploadCourtCloud = multer({ storage: storage }); // Dùng cho sân bãi cũ
+export const uploadAvatarCloud = multer({ storage: avatarStorage }); // Dùng riêng cho User

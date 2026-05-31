@@ -12,7 +12,7 @@ class UserRepository {
      * Tìm kiếm người dùng dựa vào ID
      */
     async findById(id) {
-        return await User.findById(id);
+        return await User.findById(id).select("-password");
     }
 
     /**
@@ -28,6 +28,14 @@ class UserRepository {
     async updateLastLogin(userInstance) {
         userInstance.lastLogin = new Date();
         return await userInstance.save();
+    }
+
+    async update(id, updateData) {
+        return await User.findByIdAndUpdate(
+            id,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).select("-password");
     }
 
 
