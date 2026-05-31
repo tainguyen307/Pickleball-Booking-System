@@ -135,12 +135,14 @@ export const seedDatabase = async () => {
 
         // Tạo mảng danh sách chuỗi ngày: Hôm qua, Hôm nay, Ngày mai
         const datesToSeed = [];
-        for (let i = -1; i <= 1; i++) {
+        for (let i = 0; i < 7; i++) {
             const d = new Date();
             d.setDate(d.getDate() + i);
-            datesToSeed.push(d.toISOString().split("T")[0]);
-        }
 
+            // Sử dụng 'sv-SE' để ép định dạng chuẩn YYYY-MM-DD theo múi giờ local của máy tính bạn
+            const localDateStr = d.toLocaleDateString("sv-SE");
+            datesToSeed.push(localDateStr);
+        }
         const slotsToInsert = [];
 
         // Hàm helper sinh slot tự động theo cấu hình đóng/mở của cụm sân
@@ -156,10 +158,7 @@ export const seedDatabase = async () => {
 
                         // 🎯 GIẢ LẬP ĐẶT TRƯỚC (BOOKED MOCK):
                         // Khóa cứng ngẫu nhiên một vài ô giờ vàng (8h-9h sáng hoặc 18h-19h tối) để xem màu sắc giao diện thay đổi
-                        const isMockBooked =
-                            (sub.name.includes("Sân số 01") && (startStr === "08:00" || startStr === "09:00" || startStr === "18:00")) ||
-                            (sub.name.includes("Sân ngoài trời A1") && (startStr === "17:00" || startStr === "19:00")) ||
-                            (sub.name.includes("Sân gỗ trong nhà S1") && startStr === "19:00");
+                        const isMockBooked = false;
 
                         slotsToInsert.push({
                             subCourtId: sub._id,

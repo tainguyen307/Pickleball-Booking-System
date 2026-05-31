@@ -64,7 +64,7 @@ class CourtService {
             throw new Error("Cụm sân này không tồn tại hoặc đã bị tạm ẩn!");
         }
 
-        const targetDate = dateQuery || new Date().toISOString().split("T")[0];
+        const targetDate = dateQuery || new Date().toLocaleDateString("sv-SE");
 
         // 2. Lấy danh sách tất cả các sân nhỏ thuộc cụm này
         const subCourts = await SubCourt.find({ courtId, status: "AVAILABLE" });

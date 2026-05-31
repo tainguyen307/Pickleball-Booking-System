@@ -26,7 +26,10 @@ class CourtController {
     async getCourtById(req, res) {
         try {
             const { id } = req.params;
-            const court = await courtService.getCourtDetail(id);
+            const { date } = req.query; // 🎯 THÊM DÒNG NÀY: Nhận ngày chọn từ UI gửi lên (Ví dụ: ?date=2026-05-26)
+
+            const court = await courtService.getCourtDetail(id, date); // 🎯 Truyền date vào đây
+
             return res.status(200).json({
                 success: true,
                 court
