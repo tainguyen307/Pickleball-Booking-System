@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.routes.js";
 import courtRoutes from "./routes/court.routes.js";
 import bookingRoutes from "./routes/booking.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/courts", courtRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 3. ĐÂY LÀ DÒNG QUAN TRỌNG: Giúp server treo liên tục để lắng nghe request từ Postman
 const PORT = process.env.PORT || 5000;
