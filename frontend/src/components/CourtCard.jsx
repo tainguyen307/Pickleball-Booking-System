@@ -9,7 +9,6 @@ export default function CourtCard({ court }) {
                 <img
                     alt={court.name}
                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                    crossOrigin="anonymous"
                     src={court.images?.[0]?.imageUrl}
                 />
                 {/* Gradient Overlay */}

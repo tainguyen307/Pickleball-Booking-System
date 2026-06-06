@@ -29,7 +29,7 @@ class AuthService {
         await redisClient.set(`refresh:${user._id}`, refreshToken, "EX", 7 * 24 * 60 * 60);
 
         await userRepository.updateLastLogin(user);
-        const redirectUrl = user.role === "ADMIN" ? "/admin/profile" : "/user/profile";
+        const redirectUrl = user.role === "ADMIN" ? "/admin" : "/user/profile";
 
         return { accessToken, refreshToken, redirectUrl, user };
     }
@@ -74,7 +74,7 @@ class AuthService {
 
         // 7. Lưu lịch sử login và trả về kết quả
         await userRepository.updateLastLogin(user); //
-        const redirectUrl = user.role === "ADMIN" ? "/admin/profile" : "/user/profile"; //
+        const redirectUrl = user.role === "ADMIN" ? "/admin" : "/user/profile";
 
         return { accessToken, refreshToken, redirectUrl, user };
     }

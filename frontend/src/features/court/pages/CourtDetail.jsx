@@ -1,7 +1,9 @@
 // src/features/court/pages/CourtDetail.jsx
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { courtService } from "@/services/court.service";
+import { useAuthStore } from "@/store/authStore";
+import { userService } from "@/services/user.service";
 
 export default function CourtDetail() {
     const { id } = useParams();
@@ -18,6 +20,162 @@ export default function CourtDetail() {
     // 🎯 CHỐT CHẶN BOOKING ENGINE: Lưu trữ thông tin ô giờ thật khi người chơi click chọn
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    const navigate = useNavigate();
+    const { isAuthenticated } = useAuthStore();
+
+    // Booking modal states
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [equipments, setEquipments] = useState([]);
+    const [selectedEquipments, setSelectedEquipments] = useState({}); // { equipmentId: quantity }
+    const [note, setNote] = useState("");
+    const [bookingLoading, setBookingLoading] = useState(false);
+    const [bookingError, setBookingError] = useState("");
+
+    // Payment modal states
+    const [bookingSuccessData, setBookingSuccessData] = useState(null);
+    const [paymentLoading, setPaymentLoading] = useState(false);
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+    const handleOpenBooking = async () => {
+        if (!isAuthenticated) {
+            alert("Vui lòng đăng nhập để thực hiện đặt sân!");
+            navigate("/login");
+            return;
+        }
+        if (!selectedSlot) return;
+
+        setShowBookingModal(true);
+        setBookingError("");
+        try {
+            const res = await userService.getEquipments();
+            if (res.success) {
+                setEquipments(res.equipments || []);
+                const initialSelected = {};
+                res.equipments.forEach(eq => {
+                    initialSelected[eq._id] = 0;
+                });
+                setSelectedEquipments(initialSelected);
+            }
+        } catch (err) {
+            console.error("Lỗi lấy danh sách thiết bị:", err);
+        }
+    };
+
+    const handleQtyChange = (eqId, val, maxQty) => {
+        const num = parseInt(val) || 0;
+        if (num < 0) return;
+        if (num > maxQty) {
+            alert(`Chỉ còn tối đa ${maxQty} sản phẩm trong kho!`);
+            return;
+        }
+        setSelectedEquipments(prev => ({
+            ...prev,
+            [eqId]: num
+        }));
+    };
+
+    const getEquipmentPrice = () => {
+        let total = 0;
+        const durationHours = court.slotDuration / 60 || 1;
+        equipments.forEach(eq => {
+            const qty = selectedEquipments[eq._id] || 0;
+            if (qty > 0) {
+                const subtotal = eq.rentalType === "HOUR"
+                    ? eq.rentalPrice * qty * durationHours
+                    : eq.rentalPrice * qty;
+                total += subtotal;
+            }
+        });
+        return total;
+    };
+
+    const handleConfirmBooking = async () => {
+        setBookingLoading(true);
+        setBookingError("");
+        try {
+            const reqEquipments = Object.entries(selectedEquipments)
+                .filter(([_, qty]) => qty > 0)
+                .map(([eqId, qty]) => ({
+                    equipmentId: eqId,
+                    quantity: qty
+                }));
+
+            const payload = {
+                slotId: selectedSlot.slotId,
+                equipments: reqEquipments,
+                paymentMethod: "BANKING",
+                note
+            };
+
+            const res = await userService.createBooking(payload);
+            if (res.success && res.bookingId) {
+                try {
+                    const paymentRes = await userService.getPaymentIntent(res.bookingId);
+                    if (paymentRes.success) {
+                        setBookingSuccessData({
+                            bookingId: res.bookingId,
+                            bookingCode: res.bookingCode,
+                            totalPrice: res.totalPrice,
+                            qrCodeUrl: paymentRes.qrCodeUrl,
+                            paymentDescription: paymentRes.paymentDescription
+                        });
+                    } else {
+                        setBookingSuccessData({
+                            bookingId: res.bookingId,
+                            bookingCode: res.bookingCode,
+                            totalPrice: res.totalPrice,
+                            qrCodeUrl: `https://img.vietqr.io/image/MB-0900000002-qr_only.png?amount=${res.totalPrice}&addInfo=CHUYEN%20TIEN%20SAN%20${res.bookingCode}`
+                        });
+                    }
+                } catch (payErr) {
+                    setBookingSuccessData({
+                        bookingId: res.bookingId,
+                        bookingCode: res.bookingCode,
+                        totalPrice: res.totalPrice,
+                        qrCodeUrl: `https://img.vietqr.io/image/MB-0900000002-qr_only.png?amount=${res.totalPrice}&addInfo=CHUYEN%20TIEN%20SAN%20${res.bookingCode}`
+                    });
+                }
+            }
+        } catch (err) {
+            setBookingError(err.response?.data?.message || "Đặt sân thất bại. Vui lòng thử lại!");
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
+    const handleVerifyPayment = async () => {
+        if (!bookingSuccessData) return;
+        setPaymentLoading(true);
+        try {
+            const res = await userService.confirmPayment(bookingSuccessData.bookingId, "BANKING");
+            if (res.success) {
+                setPaymentSuccess(true);
+                // Cập nhật lại sơ đồ sân
+                courtService.getCourtDetail(id, selectedDate)
+                    .then(r => {
+                        if (r.success) {
+                            const cleanCourtData = r.court?.court ? r.court.court : r.court;
+                            setCourt(cleanCourtData);
+                            setSubCourtsTimeline(r.subCourtsTimeline || r.court?.subCourtsTimeline || []);
+                            setSelectedSlot(null);
+                        }
+                    });
+            }
+        } catch (err) {
+            alert(err.response?.data?.message || "Không thể xác minh thanh toán!");
+        } finally {
+            setPaymentLoading(false);
+        }
+    };
+
+    const handleCloseAll = () => {
+        setShowBookingModal(false);
+        setBookingSuccessData(null);
+        setPaymentSuccess(false);
+        setNote("");
+        setSelectedEquipments({});
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -138,7 +296,6 @@ export default function CourtDetail() {
                             <img
                                 src={images[activeImageIndex]}
                                 alt={court.name}
-                                crossOrigin="anonymous" // 🎯 FIX COEP BẢO MẬT TRÌNH DUYỆT
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                         </div>
@@ -152,7 +309,6 @@ export default function CourtDetail() {
                                     <img
                                         src={img}
                                         alt={`Thumbnail ${idx + 1}`}
-                                        crossOrigin="anonymous" // 🎯 FIX COEP BẢO MẬT TRÌNH DUYỆT
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                     />
                                 </div>
@@ -343,6 +499,7 @@ export default function CourtDetail() {
                                 </div>
 
                                 <button
+                                    onClick={handleOpenBooking}
                                     disabled={!selectedSlot}
                                     className={`w-full py-4 rounded-xl font-bold text-sm text-white transition-all shadow-md flex items-center justify-center gap-2 ${
                                         selectedSlot ? "bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-98 cursor-pointer shadow-green-900/10" : "bg-outline-variant text-on-surface-variant/40 cursor-not-allowed"
@@ -357,6 +514,236 @@ export default function CourtDetail() {
                     </div>
 
                 </div>
+            {/* ─── BOOKING & PAYMENT MODAL ─── */}
+            {showBookingModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-gray-100 overflow-hidden transform scale-100 transition-all duration-300">
+                        {/* Header */}
+                        <div className="px-6 py-5 bg-gradient-to-r from-[#003d1a] to-[#006622] text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold text-lg">
+                                    {!bookingSuccessData ? "Xác nhận Đặt lịch & Thuê Đồ" : "Thanh toán Đặt sân"}
+                                </h3>
+                                <p className="text-xs text-emerald-200 mt-0.5">
+                                    {!bookingSuccessData ? "Kiểm tra thông tin chi tiết và dụng cụ" : `Mã đơn hàng: #${bookingSuccessData.bookingCode}`}
+                                </p>
+                            </div>
+                            {!paymentSuccess && (
+                                <button
+                                    onClick={handleCloseAll}
+                                    className="p-1.5 hover:bg-white/10 rounded-xl transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-white">close</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Content */}
+                        {!bookingSuccessData ? (
+                            /* --- Bước 1: Chọn thuê thiết bị --- */
+                            <div className="p-6 space-y-5">
+                                {/* Slot Info */}
+                                <div className="bg-emerald-50/60 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-primary text-[28px]">schedule</span>
+                                    <div>
+                                        <p className="font-black text-sm text-gray-800">{selectedSlot?.courtName}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            Ngày chơi: <span className="font-bold text-gray-700">{selectedDate}</span>
+                                            {" · "}
+                                            Giờ: <span className="font-bold text-primary">{selectedSlot?.time} - {(parseInt(selectedSlot?.time) + 1)}:00</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Equipment List */}
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Thuê dụng cụ kèm theo (Tùy chọn)</h4>
+                                    {equipments.length === 0 ? (
+                                        <p className="text-xs text-gray-400">Không có dụng cụ khả dụng trong kho.</p>
+                                    ) : (
+                                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                                            {equipments.map(eq => (
+                                                <div key={eq._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-xs text-gray-800">{eq.name}</p>
+                                                        <p className="text-[10px] text-gray-500 mt-0.5">
+                                                            {eq.rentalPrice.toLocaleString("vi-VN")}đ / {eq.rentalType === "HOUR" ? "giờ" : "lượt"}
+                                                            {" · "}
+                                                            Kho: <span className="font-semibold">{eq.availableQuantity}</span>
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleQtyChange(eq._id, (selectedEquipments[eq._id] || 0) - 1, eq.availableQuantity)}
+                                                            className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-50"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <span className="text-sm font-black text-gray-800 w-6 text-center">
+                                                            {selectedEquipments[eq._id] || 0}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleQtyChange(eq._id, (selectedEquipments[eq._id] || 0) + 1, eq.availableQuantity)}
+                                                            className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-50"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Note */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Ghi chú gửi sân</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ví dụ: Cần mượn thêm khăn lau hoặc nước uống..."
+                                        value={note}
+                                        onChange={e => setNote(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                    />
+                                </div>
+
+                                {/* Price breakdown */}
+                                <div className="border-t border-dashed border-gray-200 pt-3 space-y-1.5 text-xs text-gray-500 text-left">
+                                    <div className="flex justify-between">
+                                        <span>Tiền thuê sân</span>
+                                        <span className="font-semibold text-gray-700">{(court.pricePerHour * (court.slotDuration / 60 || 1)).toLocaleString("vi-VN")}đ</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Tiền thuê thiết bị</span>
+                                        <span className="font-semibold text-gray-700">{getEquipmentPrice().toLocaleString("vi-VN")}đ</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Phí dịch vụ hệ thống (5%)</span>
+                                        <span className="font-semibold text-gray-700">{Math.round(( (court.pricePerHour * (court.slotDuration / 60 || 1)) + getEquipmentPrice() ) * 0.05).toLocaleString("vi-VN")}đ</span>
+                                    </div>
+                                    <div className="flex justify-between font-black text-sm pt-2 border-t text-on-surface">
+                                        <span>Tổng chi phí cần trả</span>
+                                        <span className="text-primary text-base">
+                                            {(
+                                                (court.pricePerHour * (court.slotDuration / 60 || 1)) +
+                                                getEquipmentPrice() +
+                                                Math.round(( (court.pricePerHour * (court.slotDuration / 60 || 1)) + getEquipmentPrice() ) * 0.05)
+                                            ).toLocaleString("vi-VN")}đ
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {bookingError && (
+                                    <p className="text-xs text-red-500 font-semibold">{bookingError}</p>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseAll}
+                                        className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold rounded-xl text-xs transition-all"
+                                    >
+                                        Hủy bỏ
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirmBooking}
+                                        disabled={bookingLoading}
+                                        className="flex-1 py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-primary/25 disabled:opacity-50"
+                                    >
+                                        {bookingLoading ? "Đang xử lý..." : "Xác nhận Đặt sân"}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* --- Bước 2: Thanh toán chuyển khoản ngân hàng thật --- */
+                            <div className="p-6 space-y-5 text-center">
+                                {!paymentSuccess ? (
+                                    <>
+                                        <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                                            Quét mã QR bằng ứng dụng ngân hàng của bạn để chuyển khoản thanh toán tự động hoặc chuyển thủ công theo thông tin bên dưới:
+                                        </p>
+                                        <div className="w-48 h-48 mx-auto border-2 border-emerald-100 rounded-2xl overflow-hidden p-1 shadow-inner bg-emerald-50/10">
+                                            <img
+                                                src={bookingSuccessData.qrCodeUrl}
+                                                alt="VietQR MBBank"
+                                                className="w-full h-full object-contain"
+                                            />
+                                        </div>
+                                        <div className="bg-gray-50 p-4 rounded-2xl text-xs font-semibold text-gray-600 space-y-2 border border-gray-100 text-left max-w-sm mx-auto">
+                                            <div className="flex justify-between">
+                                                <span>Ngân hàng:</span>
+                                                <span className="text-gray-800">MB Bank (Quân Đội)</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Số tài khoản:</span>
+                                                <span className="text-primary font-black">0900000002</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Số tiền:</span>
+                                                <span className="text-red-500 font-black">{bookingSuccessData.totalPrice.toLocaleString("vi-VN")}đ</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Nội dung CK:</span>
+                                                <span className="text-primary font-black select-all">{bookingSuccessData.paymentDescription || `CHUYEN TIEN SAN ${bookingSuccessData.bookingCode}`}</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400">Lưu ý: Nội dung chuyển khoản phải ghi chính xác để hệ thống tự động duyệt sân.</p>
+
+                                        {/* Action buttons */}
+                                        <div className="flex gap-3 pt-2 max-w-sm mx-auto">
+                                            <button
+                                                type="button"
+                                                onClick={handleCloseAll}
+                                                className="flex-1 py-3 border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold rounded-xl text-xs transition-all"
+                                            >
+                                                Thanh toán sau
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleVerifyPayment}
+                                                disabled={paymentLoading}
+                                                className="flex-1 py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-primary/25 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                            >
+                                                {paymentLoading ? (
+                                                    "Đang xác minh..."
+                                                ) : (
+                                                    <>
+                                                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                                        Tôi đã chuyển khoản
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="py-8 space-y-4">
+                                        <div className="w-16 h-16 mx-auto bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-emerald-600 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-black text-gray-800">Đặt Sân Thành Công Rực Rỡ!</h4>
+                                            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed max-w-xs mx-auto">
+                                                Mã đơn hàng <span className="font-bold text-gray-800">#{bookingSuccessData.bookingCode}</span> đã được chuyển trạng thái đã thanh toán. Sân chơi của bạn đã khóa giữ chỗ an toàn!
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleCloseAll}
+                                            className="px-8 py-3 bg-primary hover:bg-primary/95 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-primary/20"
+                                        >
+                                            Xong
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
             </div>
 
             <style>{`

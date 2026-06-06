@@ -13,7 +13,7 @@ export const courtService = {
     /**
      * 🔍 Lấy thông tin chi tiết một cụm sân dựa vào ID
      */
-    getCourtDetail: async (id) => {
-        return await axiosClient.get(`/courts/${id}`);
+    getCourtDetail: async (id, date) => {
+        return await axiosClient.get(`/courts/${id}`, { params: { date } });
     }
 };

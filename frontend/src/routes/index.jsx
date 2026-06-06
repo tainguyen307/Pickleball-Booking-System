@@ -9,6 +9,9 @@ import Home from "../features/home/pages/Home";
 import CourtList from "../features/court/pages/CourtList";
 import CourtDetail from "../features/court/pages/CourtDetail";
 
+// 👤 User imports
+import UserProfile from "../features/user/pages/UserProfile.jsx";
+
 // 🛡️ Admin imports
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import AdminLayout from "../layouts/AdminLayout.jsx";
@@ -56,12 +59,20 @@ export const router = createBrowserRouter([
         ]
     },
     {
-        path: "/user/profile",
-        element: (
-            <div className="p-8 text-center text-primary font-bold">
-                <h1>Trang Hồ Sơ User (Đang phát triển...)</h1>
-            </div>
-        ),
+        // 👤 Trang hồ sơ user - yêu cầu đăng nhập, dùng MainLayout bên ngoài
+        path: "/user",
+        element: <ProtectedRoute />,
+        children: [
+            {
+                element: <MainLayout />,
+                children: [
+                    {
+                        path: "profile",
+                        element: <UserProfile />,
+                    },
+                ],
+            },
+        ],
     },
     {
         // 🛡️ Group các route Admin được bảo vệ bởi ProtectedRoute

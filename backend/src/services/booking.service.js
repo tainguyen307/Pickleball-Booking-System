@@ -4,6 +4,7 @@ import courtRepository from "../repositories/court.repository.js";
 import equipmentRepository from "../repositories/equipment.repository.js"; // 🎯 Import kho vật tư
 import BookingEquipment from "../models/bookingEquipment.model.js"; // Bảng trung gian lưu vết thuê
 import CourtSlot from "../models/courtSlot.model.js";
+import Notification from "../models/notification.model.js";
 import mongoose from "mongoose";
 
 class BookingService {

@@ -4,9 +4,6 @@ import axios from "axios";
 // Khởi tạo một bản sao Axios cấu hình sẵn Base URL kết nối sang Backend Cổng 5000
 const axiosClient = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
-    headers: {
-        "Content-Type": "application/json",
-    },
 });
 
 // 🛡️ TẤM LỌC 1 (Request Interceptor): Tự động đính kèm accessToken vào Header trước khi gửi đi

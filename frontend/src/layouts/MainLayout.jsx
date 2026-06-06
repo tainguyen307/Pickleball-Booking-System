@@ -51,7 +51,7 @@ export default function MainLayout() {
                         <div className="flex items-center gap-2">
                             {isAuthenticated && user ? (
                                 <div className="flex items-center gap-2">
-                                    <Link to={user.role === "ADMIN" ? "/admin/profile" : "/user/profile"} className="flex items-center gap-2 group hover:bg-surface-container p-1 rounded-full transition-all duration-200">
+                                    <Link to={user.role === "ADMIN" ? "/admin" : "/user/profile"} className="flex items-center gap-2 group hover:bg-surface-container p-1 rounded-full transition-all duration-200">
                                         <div className="relative">
                                             <img
                                                 src={user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=pickle"}
