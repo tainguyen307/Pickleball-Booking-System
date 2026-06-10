@@ -41,7 +41,6 @@ export default function Home() {
                     <img
                         alt="Professional Pickleball Court"
                         className="w-full h-full object-cover brightness-50"
-                        crossOrigin="anonymous"
                         src="https://res.cloudinary.com/djasmz67j/image/upload/v1779472663/7c3a1ab9-74f8-40df-b87a-379c18191099.png"
                     />
                 </div>

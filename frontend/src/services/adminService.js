@@ -7,11 +7,15 @@ const adminService = {
     getCourtById: (id) => axiosClient.get(`/admin/courts/${id}`),
     createCourt: (formData) =>
         axiosClient.post("/admin/courts", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
         }),
     updateCourt: (id, formData) =>
         axiosClient.put(`/admin/courts/${id}`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
         }),
     deleteCourt: (id) => axiosClient.delete(`/admin/courts/${id}`),
     blockCourt: (id) => axiosClient.put(`/admin/courts/${id}/block`),
