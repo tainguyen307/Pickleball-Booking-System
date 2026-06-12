@@ -344,7 +344,9 @@ export default function CourtManagement() {
                                                 {court.images?.[0]?.imageUrl ? (
                                                     <img src={court.images[0].imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
                                                 ) : (
-                                                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">🏟️</div>
+                                                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                                                        <span className="material-symbols-outlined text-[20px]">sports_tennis</span>
+                                                    </div>
                                                 )}
                                                 <span className="font-medium text-gray-800">{court.name}</span>
                                             </div>

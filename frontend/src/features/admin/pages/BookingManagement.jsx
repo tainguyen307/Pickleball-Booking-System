@@ -2,28 +2,201 @@
 import { useState, useEffect } from "react";
 import adminService from "../../../services/adminService";
 
-const statusColors = {
-    PENDING: "bg-yellow-100 text-yellow-700",
-    CONFIRMED: "bg-blue-100 text-blue-700",
-    COMPLETED: "bg-green-100 text-green-700",
-    CANCELLED: "bg-red-100 text-red-700",
+const statusConfig = {
+    PENDING:   { label: "Chờ duyệt",    cls: "bg-amber-100 text-amber-700 border border-amber-200" },
+    CONFIRMED: { label: "Đã xác nhận",  cls: "bg-blue-100 text-blue-700 border border-blue-200" },
+    COMPLETED: { label: "Hoàn thành",   cls: "bg-emerald-100 text-emerald-700 border border-emerald-200" },
+    CANCELLED: { label: "Đã hủy",       cls: "bg-red-100 text-red-700 border border-red-200" },
 };
 
-const paymentColors = {
-    UNPAID: "bg-orange-100 text-orange-700",
-    PAID: "bg-green-100 text-green-700",
-    REFUNDED: "bg-purple-100 text-purple-700",
+const paymentConfig = {
+    UNPAID:   { label: "Chưa TT",    cls: "bg-orange-100 text-orange-700" },
+    PAID:     { label: "Đã TT",      cls: "bg-green-100 text-green-700" },
+    REFUNDED: { label: "Đã hoàn",    cls: "bg-purple-100 text-purple-700" },
 };
 
+// ─── Cancel Detail Modal ──────────────────────────────────────────────────────
+function CancelDetailModal({ booking, onClose }) {
+    const wasPaid = booking.paymentStatus === "REFUNDED";
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white rounded-2xl shadow-soft w-full max-w-md overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center gap-3 px-6 py-4 bg-red-50 border-b border-red-100">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-red-500 text-[20px]">cancel</span>
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-gray-800">Chi tiết đơn bị hủy</h3>
+                        <p className="text-xs font-mono text-gray-500">#{booking.bookingCode}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                <div className="px-6 py-5 space-y-4">
+                    {/* Booking info */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-xs text-gray-400 mb-1">Khách hàng</p>
+                            <p className="font-semibold text-gray-800">{booking.userId?.fullName || "N/A"}</p>
+                            <p className="text-xs text-gray-500">{booking.userId?.email}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-xs text-gray-400 mb-1">Sân & Thời gian</p>
+                            <p className="font-semibold text-gray-800">{booking.courtId?.name || "N/A"}</p>
+                            <p className="text-xs text-gray-500">{booking.bookingDate} · {booking.startTime}–{booking.endTime}</p>
+                        </div>
+                    </div>
+
+                    {/* Cancel reason */}
+                    <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                        <p className="text-xs font-semibold text-red-500 mb-1.5 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">info</span>
+                            Lý do hủy
+                        </p>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                            {booking.cancelReason || "Không có lý do được cung cấp."}
+                        </p>
+                    </div>
+
+                    {/* Refund notice */}
+                    {wasPaid && (
+                        <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                            <div className="flex items-start gap-2.5">
+                                <span className="material-symbols-outlined text-amber-500 text-[20px] flex-shrink-0">account_balance_wallet</span>
+                                <div>
+                                    <p className="text-sm font-bold text-amber-700">Hoàn tiền trong vòng 24 giờ</p>
+                                    <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                                        Số tiền <span className="font-black">{booking.totalPrice?.toLocaleString("vi-VN")}đ</span> sẽ được hoàn lại qua phương thức thanh toán gốc trong vòng <span className="font-bold">24 giờ làm việc</span>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {!wasPaid && booking.paymentStatus === "UNPAID" && (
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">info</span>
+                                Đơn này chưa thanh toán nên không cần hoàn tiền.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-6 pb-5">
+                    <button
+                        onClick={onClose}
+                        className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-all"
+                    >
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Cancel Confirm Modal ─────────────────────────────────────────────────────
+function CancelConfirmModal({ booking, onConfirm, onClose }) {
+    const [reason, setReason] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!reason.trim()) return;
+        setSubmitting(true);
+        await onConfirm(booking._id, reason.trim());
+        setSubmitting(false);
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white rounded-2xl shadow-soft w-full max-w-md overflow-hidden">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-red-500 text-[20px]">warning</span>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Hủy đơn đặt sân</h3>
+                        <p className="text-xs text-gray-500">#{booking.bookingCode}</p>
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+                    {booking.paymentStatus === "PAID" && (
+                        <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                            <span className="material-symbols-outlined text-amber-500 text-[18px] flex-shrink-0">account_balance_wallet</span>
+                            <p className="text-xs text-amber-700 font-medium">
+                                Đơn này đã thanh toán <span className="font-black">{booking.totalPrice?.toLocaleString("vi-VN")}đ</span>. Hệ thống sẽ tự động chuyển trạng thái sang "Đã hoàn tiền" và thông báo khách hàng.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-gray-700">
+                            Lý do hủy <span className="text-red-400">*</span>
+                        </label>
+                        <textarea
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Nhập lý do hủy để thông báo đến khách hàng..."
+                            rows={3}
+                            required
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none transition-all resize-none"
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 text-sm"
+                        >
+                            Hủy bỏ
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting || !reason.trim()}
+                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            {submitting ? (
+                                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <span className="material-symbols-outlined text-[16px]">cancel</span>
+                            )}
+                            Xác nhận hủy
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookingManagement() {
     const [bookings, setBookings] = useState([]);
     const [pagination, setPagination] = useState({});
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({ page: 1, status: "", startDate: "", endDate: "" });
 
-    useEffect(() => {
-        fetchBookings();
-    }, [filters.page, filters.status]);
+    // Modal states
+    const [cancelTarget, setCancelTarget] = useState(null);   // booking đang muốn hủy
+    const [detailTarget, setDetailTarget] = useState(null);   // booking muốn xem chi tiết hủy
+    const [actionMsg, setActionMsg] = useState({ text: "", type: "" });
+
+    useEffect(() => { fetchBookings(); }, [filters.page, filters.status]);
 
     const fetchBookings = async () => {
         try {
@@ -42,24 +215,42 @@ export default function BookingManagement() {
         }
     };
 
+    const showMsg = (text, type = "success") => {
+        setActionMsg({ text, type });
+        setTimeout(() => setActionMsg({ text: "", type: "" }), 4000);
+    };
+
     const handleConfirm = async (id) => {
         if (!window.confirm("Xác nhận duyệt đơn đặt sân này?")) return;
         try {
             await adminService.confirmBooking(id);
+            showMsg("Đã xác nhận đơn đặt sân!", "success");
             fetchBookings();
         } catch (err) {
-            alert(err?.response?.data?.message || err.message);
+            showMsg(err?.response?.data?.message || err.message, "error");
         }
     };
 
-    const handleCancel = async (id) => {
-        const reason = window.prompt("Lý do hủy đơn:");
-        if (reason === null) return;
+    const handleComplete = async (id) => {
+        if (!window.confirm("Xác nhận hoàn tất đơn đặt sân này? Doanh thu sẽ được ghi nhận.")) return;
         try {
-            await adminService.cancelBooking(id, reason);
+            await adminService.completeBooking(id);
+            showMsg("Đã hoàn tất đơn đặt sân!", "success");
             fetchBookings();
         } catch (err) {
-            alert(err?.response?.data?.message || err.message);
+            showMsg(err?.response?.data?.message || err.message, "error");
+        }
+    };
+
+    const handleCancelConfirm = async (id, reason) => {
+        try {
+            const res = await adminService.cancelBooking(id, reason);
+            setCancelTarget(null);
+            const refundNote = res?.refunded ? " Đã chuyển trạng thái hoàn tiền." : "";
+            showMsg(`Đã hủy đơn thành công.${refundNote}`, "success");
+            fetchBookings();
+        } catch (err) {
+            showMsg(err?.response?.data?.message || err.message, "error");
         }
     };
 
@@ -73,14 +264,29 @@ export default function BookingManagement() {
 
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-800">Quản lý Booking</h1>
-                <p className="text-gray-500 mt-1">Xem, xác nhận và hủy đơn đặt sân</p>
+                <h1 className="text-2xl font-black text-gray-800">Quản lý Booking</h1>
+                <p className="text-gray-500 mt-1 text-sm">Xem, xác nhận và hủy đơn đặt sân</p>
             </div>
+
+            {/* Toast */}
+            {actionMsg.text && (
+                <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-semibold border ${
+                    actionMsg.type === "success"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-red-50 text-red-600 border-red-200"
+                }`}>
+                    <span className="material-symbols-outlined text-[18px]">
+                        {actionMsg.type === "success" ? "check_circle" : "error"}
+                    </span>
+                    {actionMsg.text}
+                </div>
+            )}
 
             {/* Filters */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <form onSubmit={handleFilterSubmit} className="flex flex-wrap gap-3">
+                <form onSubmit={handleFilterSubmit} className="flex flex-wrap gap-3 items-center">
                     <select
                         value={filters.status}
                         onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
@@ -97,93 +303,131 @@ export default function BookingManagement() {
                         onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
                         className="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
+                    <span className="text-gray-400 text-sm">→</span>
                     <input
                         type="date" value={filters.endDate}
                         onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                         className="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
-                    <button type="submit" className="px-5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 font-medium text-sm">
+                    <button type="submit" className="px-5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 font-semibold text-sm transition-all">
                         Lọc
                     </button>
+                    {(filters.status || filters.startDate || filters.endDate) && (
+                        <button
+                            type="button"
+                            onClick={() => setFilters({ page: 1, status: "", startDate: "", endDate: "" })}
+                            className="px-4 py-2 text-gray-400 hover:text-gray-600 text-sm font-medium"
+                        >
+                            Xóa lọc
+                        </button>
+                    )}
                 </form>
             </div>
 
             {/* Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
-                    <div className="flex items-center justify-center h-48">
-                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+                    <div className="flex flex-col items-center justify-center h-48 gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary/20 border-t-primary" />
+                        <p className="text-sm text-gray-400">Đang tải...</p>
                     </div>
                 ) : bookings.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                        <p className="text-lg">Chưa có đơn đặt sân nào</p>
+                    <div className="text-center py-16 text-gray-400">
+                        <span className="material-symbols-outlined text-5xl text-gray-200 block mb-3">calendar_month</span>
+                        <p className="font-semibold">Chưa có đơn đặt sân nào</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Mã đơn</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Khách hàng</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Sân</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Ngày & Giờ</th>
-                                    <th className="text-right py-3 px-4 font-medium text-gray-500">Tổng tiền</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Thanh toán</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Trạng thái</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Hành động</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Mã đơn</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Khách hàng</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Sân</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Ngày & Giờ</th>
+                                    <th className="text-right py-3 px-4 text-xs font-bold text-gray-500">Tổng tiền</th>
+                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Thanh toán</th>
+                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Trạng thái</th>
+                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Hành động</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {bookings.map((b) => (
-                                    <tr key={b._id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                        <td className="py-3 px-4 font-mono text-xs font-medium text-gray-700">{b.bookingCode}</td>
-                                        <td className="py-3 px-4">
-                                            <div>
-                                                <p className="font-medium text-gray-800">{b.userId?.fullName || "N/A"}</p>
+                            <tbody className="divide-y divide-gray-50">
+                                {bookings.map((b) => {
+                                    const st = statusConfig[b.status] || { label: b.status, cls: "bg-gray-100 text-gray-600" };
+                                    const pm = paymentConfig[b.paymentStatus] || { label: b.paymentStatus, cls: "bg-gray-100 text-gray-600" };
+                                    return (
+                                        <tr key={b._id} className="hover:bg-gray-50/60 transition-colors">
+                                            <td className="py-3.5 px-4 font-mono text-xs font-bold text-gray-600">{b.bookingCode}</td>
+                                            <td className="py-3.5 px-4">
+                                                <p className="font-semibold text-gray-800">{b.userId?.fullName || "N/A"}</p>
                                                 <p className="text-xs text-gray-400">{b.userId?.email}</p>
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4 text-gray-600">{b.courtId?.name || "N/A"}</td>
-                                        <td className="py-3 px-4">
-                                            <p className="font-medium text-gray-700">{b.bookingDate}</p>
-                                            <p className="text-xs text-gray-400">{b.startTime} - {b.endTime}</p>
-                                        </td>
-                                        <td className="py-3 px-4 text-right font-bold text-gray-700">{formatMoney(b.totalPrice)}</td>
-                                        <td className="py-3 px-4 text-center">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${paymentColors[b.paymentStatus]}`}>
-                                                {b.paymentStatus}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-4 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[b.status]}`}>
-                                                {b.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="flex items-center justify-center gap-1">
-                                                {b.status === "PENDING" && (
-                                                    <button onClick={() => handleConfirm(b._id)} className="p-2 hover:bg-green-50 rounded-lg text-green-600" title="Xác nhận">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                                {!["CANCELLED", "COMPLETED"].includes(b.status) && (
-                                                    <button onClick={() => handleCancel(b._id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500" title="Hủy">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="py-3.5 px-4 text-gray-600 font-medium">{b.courtId?.name || "N/A"}</td>
+                                            <td className="py-3.5 px-4">
+                                                <p className="font-semibold text-gray-700">{b.bookingDate}</p>
+                                                <p className="text-xs text-gray-400">{b.startTime} – {b.endTime}</p>
+                                            </td>
+                                            <td className="py-3.5 px-4 text-right font-black text-gray-800">{formatMoney(b.totalPrice)}</td>
+                                            <td className="py-3.5 px-4 text-center">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${pm.cls}`}>{pm.label}</span>
+                                            </td>
+                                            <td className="py-3.5 px-4 text-center">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${st.cls}`}>{st.label}</span>
+                                            </td>
+                                            <td className="py-3.5 px-4">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    {/* Duyệt */}
+                                                    {b.status === "PENDING" && (
+                                                        <button
+                                                            onClick={() => handleConfirm(b._id)}
+                                                            title="Duyệt đơn"
+                                                            className="p-1.5 hover:bg-green-50 rounded-lg text-green-600 transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                                        </button>
+                                                    )}
+                                                    {/* Hoàn tất */}
+                                                    {b.status === "CONFIRMED" && b.paymentStatus === "PAID" && (
+                                                        <button
+                                                            onClick={() => handleComplete(b._id)}
+                                                            title="Hoàn tất"
+                                                            className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                                                        </button>
+                                                    )}
+                                                    {/* Hủy */}
+                                                    {!["CANCELLED", "COMPLETED"].includes(b.status) && (
+                                                        <button
+                                                            onClick={() => setCancelTarget(b)}
+                                                            title="Hủy đơn"
+                                                            className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">cancel</span>
+                                                        </button>
+                                                    )}
+                                                    {/* Xem lý do hủy */}
+                                                    {b.status === "CANCELLED" && (
+                                                        <button
+                                                            onClick={() => setDetailTarget(b)}
+                                                            title="Xem lý do hủy"
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors text-xs font-medium"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[15px]">info</span>
+                                                            Chi tiết
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 )}
 
+                {/* Pagination */}
                 {pagination.totalPages > 1 && (
                     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                         <span className="text-sm text-gray-500">
@@ -193,21 +437,36 @@ export default function BookingManagement() {
                             <button
                                 disabled={pagination.currentPage <= 1}
                                 onClick={() => setFilters({ ...filters, page: filters.page - 1 })}
-                                className="px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Trước
+                                ← Trước
                             </button>
                             <button
                                 disabled={pagination.currentPage >= pagination.totalPages}
                                 onClick={() => setFilters({ ...filters, page: filters.page + 1 })}
-                                className="px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Sau
+                                Sau →
                             </button>
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* ─── Modals ─── */}
+            {cancelTarget && (
+                <CancelConfirmModal
+                    booking={cancelTarget}
+                    onConfirm={handleCancelConfirm}
+                    onClose={() => setCancelTarget(null)}
+                />
+            )}
+            {detailTarget && (
+                <CancelDetailModal
+                    booking={detailTarget}
+                    onClose={() => setDetailTarget(null)}
+                />
+            )}
         </div>
     );
 }

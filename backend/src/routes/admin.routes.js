@@ -21,6 +21,7 @@ router.put("/courts/:id/block", adminController.blockCourt);
 // ======================== BOOKINGS ========================
 router.get("/bookings", adminController.getAllBookings);
 router.put("/bookings/:id/confirm", adminController.confirmBooking);
+router.put("/bookings/:id/complete", adminController.completeBooking);
 router.put("/bookings/:id/cancel", adminController.cancelBooking);
 
 // ======================== EQUIPMENT ========================

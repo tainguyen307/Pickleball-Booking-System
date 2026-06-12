@@ -49,6 +49,34 @@ const bookingSchema = new mongoose.Schema({
         default: 0
     },
 
+    systemFee: {
+        type: Number,
+        default: 0
+    },
+
+    couponId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Coupon",
+        default: null
+    },
+
+    couponCode: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        default: null
+    },
+
+    pointDiscount: {
+        type: Number,
+        default: 0
+    },
+
+    pointsUsed: {
+        type: Number,
+        default: 0
+    },
+
     discount: {
         type: Number,
         default: 0
@@ -122,6 +150,10 @@ bookingSchema.index({
 
 bookingSchema.index({
     paymentStatus: 1
+});
+
+bookingSchema.index({
+    createdAt: -1
 });
 
 

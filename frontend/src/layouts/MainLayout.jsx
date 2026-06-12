@@ -1,6 +1,7 @@
 // src/components/MainLayout.jsx
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore.js";
+import NotificationBell from "@/components/NotificationBell.jsx";
 
 export default function MainLayout() {
     const navigate = useNavigate();
@@ -22,19 +23,15 @@ export default function MainLayout() {
     };
 
     return (
-        <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
-            {/* 🎯 TOP NAVIGATION - Modern Glassmorphism */}
-            <header className="fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/50 shadow-sm">
-                <div className="px-4 md:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-14 max-w-container-max mx-auto">
+        <div className="flex min-h-screen flex-col bg-background text-on-background">
+            <header className="fixed top-0 z-50 w-full border-b border-outline-variant/70 bg-white/88 shadow-[0_10px_30px_rgba(15,122,75,0.05)] backdrop-blur-xl">
+                <div className="app-shell">
+                    <div className="flex h-16 items-center justify-between">
                         <Link to="/" className="group flex items-center gap-2.5">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-primary/20 rounded-xl blur-md group-hover:blur-lg transition-all opacity-0 group-hover:opacity-100" />
-                                <div className="relative bg-gradient-to-br from-primary/10 to-primary/5 p-2 rounded-xl group-hover:scale-105 transition-all duration-300">
-                                    <span className="material-symbols-outlined text-[22px] text-primary">sports_tennis</span>
-                                </div>
+                            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shadow-[0_12px_25px_rgba(15,122,75,0.22)] transition-transform group-hover:-rotate-3">
+                                <span className="material-symbols-outlined text-[22px]">sports_tennis</span>
                             </div>
-                            <span className="text-xl font-black bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent tracking-tight">
+                            <span className="text-xl font-black tracking-tight text-on-surface">
                                 PickleballPro
                             </span>
                         </Link>
@@ -46,11 +43,25 @@ export default function MainLayout() {
                             <NavLink to="/courts" className={getNavLinkClass}>
                                 Sân bóng
                             </NavLink>
+                            {isAuthenticated && (
+                                <NavLink to="/user/favorites" className={getNavLinkClass}>
+                                    Yêu thích
+                                </NavLink>
+                            )}
+                            {isAuthenticated && (
+                                <NavLink to="/user/rewards" className={getNavLinkClass}>
+                                    <span className="flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[15px]">workspace_premium</span>
+                                        Điểm & Ưu đãi
+                                    </span>
+                                </NavLink>
+                            )}
                         </nav>
 
                         <div className="flex items-center gap-2">
                             {isAuthenticated && user ? (
                                 <div className="flex items-center gap-2">
+                                    <NotificationBell />
                                     <Link to={user.role === "ADMIN" ? "/admin" : "/user/profile"} className="flex items-center gap-2 group hover:bg-surface-container p-1 rounded-full transition-all duration-200">
                                         <div className="relative">
                                             <img
@@ -66,7 +77,7 @@ export default function MainLayout() {
                                     </Link>
                                     <button
                                         onClick={handleLogout}
-                                        className="p-2 rounded-full text-outline hover:text-rose-500 hover:bg-rose-50 transition-all duration-200"
+                                        className="rounded-full p-2 text-outline transition-all duration-200 hover:bg-red-50 hover:text-red-500"
                                         title="Đăng xuất"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -76,15 +87,15 @@ export default function MainLayout() {
                                 <>
                                     <button
                                         onClick={() => navigate("/login")}
-                                        className="hidden md:block px-4 py-1.5 rounded-full text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-200 font-label-md text-label-md font-medium"
+                                        className="hidden rounded-xl px-4 py-2 text-sm font-bold text-on-surface-variant transition-all duration-200 hover:bg-primary-container hover:text-primary md:block"
                                     >
-                                        Sign In
+                                        Đăng nhập
                                     </button>
                                     <button
                                         onClick={() => navigate("/register")}
-                                        className="bg-primary text-on-primary px-5 py-1.5 rounded-full font-label-md text-label-md hover:shadow-md hover:shadow-primary/25 hover:scale-105 active:scale-95 transition-all duration-200 font-semibold"
+                                        className="btn-primary px-5 py-2"
                                     >
-                                        Book Now
+                                        Đặt sân
                                     </button>
                                 </>
                             )}
@@ -94,60 +105,52 @@ export default function MainLayout() {
             </header>
 
             {/* 🌟 MAIN CONTENT */}
-            <main className="pt-14 flex-grow">
+            <main className="flex-grow pt-16">
                 <Outlet />
             </main>
 
-            {/* 📜 MODERN MINIMAL FOOTER */}
-            <footer className="w-full py-12 mt-auto bg-surface-container border-t border-outline-variant/40">
-                <div className="px-4 md:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-container-max mx-auto">
+            <footer className="mt-auto w-full border-t border-outline-variant/70 bg-white py-12">
+                <div className="app-shell">
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
                         <div className="col-span-1 md:col-span-1">
                             <div className="flex items-center gap-2 mb-4">
-                                <div className="bg-primary/10 p-1.5 rounded-lg">
-                                    <span className="material-symbols-outlined text-primary text-[20px]">sports_tennis</span>
+                                <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-white">
+                                    <span className="material-symbols-outlined text-[19px]">sports_tennis</span>
                                 </div>
-                                <span className="text-lg font-black bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                                <span className="text-lg font-black text-on-surface">
                                     PickleballPro
                                 </span>
                             </div>
-                            <p className="text-sm text-on-surface-variant/70 leading-relaxed">
-                                Elevating the sport of pickleball through technology and community excellence.
+                            <p className="muted-copy">
+                                Đặt sân, thanh toán, thuê dụng cụ và theo dõi lịch chơi trong một trải nghiệm gọn gàng.
                             </p>
                         </div>
                         <div>
-                            <h5 className="text-xs font-bold uppercase tracking-wider mb-4 text-on-surface/60">Company</h5>
+                            <h5 className="mb-4 text-sm font-black text-on-surface">Hệ thống</h5>
                             <ul className="space-y-2 text-sm">
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">About Us</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Careers</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Facility Rules</a></li>
+                                <li><Link className="text-on-surface-variant transition-colors duration-200 hover:text-primary" to="/courts">Danh sách sân</Link></li>
+                                <li><Link className="text-on-surface-variant transition-colors duration-200 hover:text-primary" to="/user/favorites">Yêu thích</Link></li>
+                                <li><Link className="text-on-surface-variant transition-colors duration-200 hover:text-primary" to="/user/profile">Hồ sơ</Link></li>
                             </ul>
                         </div>
                         <div>
-                            <h5 className="text-xs font-bold uppercase tracking-wider mb-4 text-on-surface/60">Support</h5>
+                            <h5 className="mb-4 text-sm font-black text-on-surface">Hỗ trợ</h5>
                             <ul className="space-y-2 text-sm">
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Contact Support</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Terms of Service</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Privacy Policy</a></li>
+                                <li><a className="text-on-surface-variant transition-colors duration-200 hover:text-primary" href="#">Liên hệ</a></li>
+                                <li><a className="text-on-surface-variant transition-colors duration-200 hover:text-primary" href="#">Điều khoản</a></li>
+                                <li><a className="text-on-surface-variant transition-colors duration-200 hover:text-primary" href="#">Bảo mật</a></li>
                             </ul>
                         </div>
                         <div>
-                            <h5 className="text-xs font-bold uppercase tracking-wider mb-4 text-on-surface/60">Follow Us</h5>
-                            <div className="flex gap-2">
-                                <a className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white hover:-translate-y-0.5 transition-all duration-200" href="#">
-                                    <span className="material-symbols-outlined text-[18px]">language</span>
-                                </a>
-                                <a className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white hover:-translate-y-0.5 transition-all duration-200" href="#">
-                                    <span className="material-symbols-outlined text-[18px]">smart_display</span>
-                                </a>
-                            </div>
+                            <h5 className="mb-4 text-sm font-black text-on-surface">Giờ vận hành</h5>
+                            <p className="muted-copy">Hệ thống đặt sân hoạt động 24/7. Từng cụm sân có giờ mở cửa riêng trong trang chi tiết.</p>
                         </div>
                     </div>
-                    <div className="max-w-container-max mx-auto mt-8 pt-6 border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-3">
-                        <p className="text-xs text-on-surface-variant/60">© {new Date().getFullYear()} PickleballPro Management. All rights reserved.</p>
-                        <div className="flex gap-6 text-xs text-on-surface-variant/60">
-                            <span className="hover:text-primary hover:cursor-pointer transition-colors">Global Rankings</span>
-                            <span className="hover:text-primary hover:cursor-pointer transition-colors">Find a Coach</span>
+                    <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-outline-variant/60 pt-6 md:flex-row">
+                        <p className="text-xs text-on-surface-variant">© {new Date().getFullYear()} PickleballPro Management.</p>
+                        <div className="flex gap-6 text-xs text-on-surface-variant">
+                            <span>Realtime booking</span>
+                            <span>Verified reviews</span>
                         </div>
                     </div>
                 </div>

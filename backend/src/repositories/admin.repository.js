@@ -270,6 +270,43 @@ class AdminRepository {
         ]);
     }
 
+    async getTopCourtsByBooking() {
+        return await Booking.aggregate([
+            {
+                $match: {
+                    status: { $in: ["CONFIRMED", "COMPLETED"] },
+                    paymentStatus: "PAID"
+                }
+            },
+            {
+                $group: {
+                    _id: "$courtId",
+                    bookingCount: { $sum: 1 },
+                    totalRevenue: { $sum: "$totalPrice" }
+                }
+            },
+            { $sort: { bookingCount: -1, totalRevenue: -1 } },
+            { $limit: 10 },
+            {
+                $lookup: {
+                    from: "courts",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "court"
+                }
+            },
+            { $unwind: "$court" },
+            {
+                $project: {
+                    name: "$court.name",
+                    location: "$court.location",
+                    bookingCount: 1,
+                    totalRevenue: 1
+                }
+            }
+        ]);
+    }
+
     /**
      * Thống kê booking theo trạng thái
      */

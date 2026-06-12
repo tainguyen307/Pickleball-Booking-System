@@ -70,6 +70,37 @@ const courtSchema = new mongoose.Schema({
             "HIDDEN"
         ],
         default: "AVAILABLE"
+    },
+
+    reviewCount: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+
+    averageRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+    },
+
+    favoriteCount: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+
+    viewCount: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+
+    bookingCount: {
+        type: Number,
+        default: 0,
+        min: 0
     }
 
 }, {
@@ -81,6 +112,9 @@ const courtSchema = new mongoose.Schema({
 courtSchema.index({ location: 1 });
 courtSchema.index({ type: 1 });
 courtSchema.index({ status: 1 });
+courtSchema.index({ reviewCount: -1 });
+courtSchema.index({ favoriteCount: -1 });
+courtSchema.index({ viewCount: -1 });
 courtSchema.index({
     location: "text",
     name: "text"

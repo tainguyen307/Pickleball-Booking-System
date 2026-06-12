@@ -10,9 +10,9 @@ const statusColors = {
 };
 
 const typeLabels = {
-    PADDLE: "🏓 Vợt",
-    BALL: "🟡 Bóng",
-    ACCESSORY: "🎒 Phụ kiện",
+    PADDLE: "Vợt",
+    BALL: "Bóng",
+    ACCESSORY: "Phụ kiện",
 };
 
 const EquipmentFormModal = ({ equipment, onClose, onSave }) => {

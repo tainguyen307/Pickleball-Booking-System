@@ -26,6 +26,14 @@ class CourtRepository {
     async findById(id) {
         return await Court.findById(id);
     }
+
+    async incrementStats(id, increments) {
+        return await Court.findByIdAndUpdate(
+            id,
+            { $inc: increments },
+            { new: true }
+        );
+    }
 }
 
 export default new CourtRepository();

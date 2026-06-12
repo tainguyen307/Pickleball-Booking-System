@@ -1,4 +1,3 @@
-// src/features/auth/pages/Register.jsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import FormInput from "@/components/FormInput";
@@ -6,29 +5,20 @@ import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/authStore";
 
 export default function Register() {
-    const [step, setStep] = useState(1); // 🎯 1: Nhập Form, 2: Nhập OTP
-
-    // Giữ nguyên toàn bộ 3 State gốc của bạn
+    const [step, setStep] = useState(1);
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-
-    // Thêm duy nhất State hứng mã OTP
     const [otpCode, setOtpCode] = useState("");
-
     const [errorMsg, setErrorMsg] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false); // Quản lý trạng thái hiện màn hình chúc mừng
+    const [isSuccess, setIsSuccess] = useState(false);
 
     const setAuth = useAuthStore((state) => state.setAuth);
 
-    /**
-     * GIAI ĐOẠN 1: Bấm nút Đăng Ký -> Gọi API gốc truyền 3 tham số rời rạc
-     */
-    const handleRegisterSubmit = async (e) => {
-        e.preventDefault();
-
+    const handleRegisterSubmit = async (event) => {
+        event.preventDefault();
         if (isLoading) return;
 
         if (!name || !email || !password || !confirmPassword) {
@@ -45,13 +35,8 @@ export default function Register() {
         setErrorMsg("");
 
         try {
-            // 🎯 GIỮ NGUYÊN LUỒNG TRUYỀN 3 THAM SỐ RỜI RẠC NHƯ CŨ CỦA BẠN:
             const data = await authService.register(name, email, password);
-
-            // Nếu Backend phản hồi yêu cầu xác thực OTP thành công
-            if (data) {
-                setStep(2); // Đá sang màn hình nhập 6 số OTP
-            }
+            if (data) setStep(2);
         } catch (err) {
             setErrorMsg(err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại!");
         } finally {
@@ -59,12 +44,8 @@ export default function Register() {
         }
     };
 
-    /**
-     * GIAI ĐOẠN 2: Bấm nút Xác Nhận OTP -> Lưu DB thật và kích hoạt Token
-     */
-    const handleOTPSubmit = async (e) => {
-        e.preventDefault();
-
+    const handleOTPSubmit = async (event) => {
+        event.preventDefault();
         if (isLoading) return;
 
         if (!otpCode || otpCode.length !== 6) {
@@ -76,21 +57,15 @@ export default function Register() {
         setErrorMsg("");
 
         try {
-            // Gọi API xác thực OTP
             const data = await authService.verifyOTP({ email, otpCode });
 
             if (data) {
-                // 🏆 KÍCH HOẠT PHIÊN ĐĂNG NHẬP (Luồng xử lý Zustand gốc của bạn)
                 setAuth(data.user, data.accessToken);
                 localStorage.setItem("refreshToken", data.refreshToken);
-
-                // 🎯 BẬT MÀN HÌNH CHÚC MỪNG THÀNH CÔNG
                 setIsSuccess(true);
-
-                // Hoãn 3 giây rồi mới chính thức chuyển trang cho người dùng kịp nhìn thông báo thành công
                 setTimeout(() => {
                     window.location.href = data.redirectUrl || "/";
-                }, 3000);
+                }, 2200);
             }
         } catch (err) {
             setErrorMsg(err.response?.data?.message || "Mã OTP không chính xác hoặc đã hết hạn!");
@@ -100,167 +75,112 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-gutter py-12 relative overflow-hidden font-lexend">
-            <div className="w-full max-w-[440px] bg-white rounded-3xl p-8 shadow-sm border border-outline-variant/30 z-10">
+        <div className="min-h-[100dvh] bg-background">
+            <main className="app-shell grid min-h-[100dvh] items-center gap-10 py-10 lg:grid-cols-[1fr_0.95fr]">
+                <section className="mx-auto w-full max-w-[500px]">
+                    <div className="surface-panel p-6 md:p-8">
+                        {!isSuccess ? (
+                            <>
+                                <div className="mb-7">
+                                    <Link to="/login" className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+                                        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                                        Đã có tài khoản
+                                    </Link>
+                                    <h1 className="text-3xl font-black tracking-tight text-on-surface">
+                                        {step === 1 ? "Tạo tài khoản" : "Xác thực email"}
+                                    </h1>
+                                    <p className="muted-copy mt-2">
+                                        {step === 1
+                                            ? "Lưu lịch chơi, sân yêu thích và nhận điểm thưởng sau mỗi đánh giá."
+                                            : `Mã xác minh đã được gửi đến ${email}.`
+                                        }
+                                    </p>
+                                </div>
 
-                {/* 🎯 NẾU CHƯA THÀNH CÔNG -> HIỆN UI NHẬP FORM / NHẬP OTP NHƯ CŨ */}
-                {!isSuccess ? (
-                    <>
-                        {/* Header linh hoạt */}
-                        <div className="text-center mb-8">
-                            <h1 className="text-headline-md font-bold text-primary mb-2">
-                                {step === 1 ? "Tạo Tài Khoản" : "Xác Thực Email"}
-                            </h1>
-                            <p className="text-on-surface-variant text-body-medium">
-                                {step === 1
-                                    ? "Tham gia PickleballPro ngay hôm nay"
-                                    : `Mã xác minh đã được gửi đến hộp thư ${email}`
-                                }
-                            </p>
-                        </div>
+                                {errorMsg && (
+                                    <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-error">
+                                        <span className="material-symbols-outlined text-[18px]">error</span>
+                                        {errorMsg}
+                                    </div>
+                                )}
 
-                        {/* Thông báo lỗi */}
-                        {errorMsg && (
-                            <div className="mb-4 p-3 bg-error/10 text-error rounded-xl text-body-medium flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[20px]">error</span>
-                                <span>{errorMsg}</span>
-                            </div>
-                        )}
+                                {step === 1 ? (
+                                    <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                                        <FormInput label="Họ và tên" type="text" icon="person" placeholder="Nguyễn Văn A" value={name} onChange={(event) => setName(event.target.value)} />
+                                        <FormInput label="Email" type="email" icon="mail" placeholder="name@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+                                        <FormInput label="Mật khẩu" type="password" icon="lock" placeholder="Tối thiểu 6 ký tự" value={password} onChange={(event) => setPassword(event.target.value)} />
+                                        <FormInput label="Xác nhận mật khẩu" type="password" icon="lock_reset" placeholder="Nhập lại mật khẩu" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
 
-                        {step === 1 ? (
-                            /* 📜 FORM ĐĂNG KÝ GỐC Y HỆT 100% GIAO DIỆN CỦA BẠN */
-                            <form onSubmit={handleRegisterSubmit} className="space-y-5">
-                                <FormInput
-                                    label="Họ và Tên"
-                                    type="text"
-                                    icon="person"
-                                    placeholder="Nguyễn Văn A"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                />
+                                        <button type="submit" disabled={isLoading} className="btn-primary w-full">
+                                            {isLoading ? "Đang xử lý..." : "Đăng ký"}
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <form onSubmit={handleOTPSubmit} className="space-y-6">
+                                        <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-center text-sm leading-6 text-on-surface-variant">
+                                            Nhập mã OTP gồm 6 chữ số để kích hoạt tài khoản.
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-center text-sm font-bold text-on-surface">
+                                                Mã OTP
+                                            </label>
+                                            <input
+                                                type="text"
+                                                maxLength="6"
+                                                placeholder="000000"
+                                                value={otpCode}
+                                                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))}
+                                                className="field-control h-14 text-center text-2xl font-black tracking-[12px]"
+                                            />
+                                        </div>
 
-                                <FormInput
-                                    label="Địa chỉ Email"
-                                    type="email"
-                                    icon="mail"
-                                    placeholder="name@example.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
+                                        <button type="submit" disabled={isLoading} className="btn-primary w-full">
+                                            {isLoading ? "Đang xác minh..." : "Xác nhận"}
+                                        </button>
 
-                                <FormInput
-                                    label="Mật khẩu"
-                                    type="password"
-                                    icon="lock"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-
-                                <FormInput
-                                    label="Xác nhận mật khẩu"
-                                    type="password"
-                                    icon="lock"
-                                    placeholder="••••••••"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                />
-
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-full transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                                            <span>Đang xử lý...</span>
-                                        </>
-                                    ) : (
-                                        <span>Đăng Ký</span>
-                                    )}
-                                </button>
-                            </form>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setStep(1);
+                                                setErrorMsg("");
+                                            }}
+                                            className="mx-auto block text-sm font-bold text-on-surface-variant hover:text-primary"
+                                        >
+                                            Sửa email đăng ký
+                                        </button>
+                                    </form>
+                                )}
+                            </>
                         ) : (
-                            /* 🔒 MÀN HÌNH NHẬP OTP XÁC THỰC */
-                            <form onSubmit={handleOTPSubmit} className="space-y-6">
-                                <div className="bg-surface-container-low p-4 rounded-xl text-xs text-on-surface-variant leading-relaxed text-center">
-                                    📬 Vui lòng kiểm tra Email, sao chép mã số **OTP gồm 6 chữ số** điền xuống dưới để kích hoạt phiên đăng ký.
+                            <div className="py-6 text-center">
+                                <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary-container text-primary">
+                                    <span className="material-symbols-outlined text-[36px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        check_circle
+                                    </span>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-body-medium font-bold text-on-surface block text-center">
-                                        Mã OTP Xác Thực
-                                    </label>
-                                    <input
-                                        type="text"
-                                        maxLength="6"
-                                        placeholder="000000"
-                                        value={otpCode}
-                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                                        className="w-full h-14 tracking-[12px] text-center font-black text-2xl border border-outline rounded-2xl focus:outline-none focus:border-primary bg-surface-container-lowest transition-all"
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-full transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                                            <span>Đang xác minh...</span>
-                                        </>
-                                    ) : (
-                                        <span>Xác Nhận Kích Hoạt</span>
-                                    )}
-                                </button>
-
-                                <div className="text-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setStep(1);
-                                            setErrorMsg("");
-                                        }}
-                                        className="text-sm text-outline hover:text-primary hover:underline font-medium transition-colors"
-                                    >
-                                        ← Quay lại sửa thông tin email
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                        {/* Footer chuyển màn */}
-                        <div className="text-center mt-8 text-body-medium text-on-surface-variant">
-                            Đã có tài khoản?{" "}
-                            <Link to="/login" className="text-primary font-bold hover:underline">
-                                Đăng nhập
-                            </Link>
-                        </div>
-                    </>
-                ) : (
-                    /* 🎯 NẾU ĐÃ ĐĂNG KÝ + XÁC THỰC OTP THÀNH CÔNG -> BẬT UI CHÚC MỪNG LÊN */
-                    <div className="text-center py-6 space-y-4">
-                        <div className="w-16 h-16 bg-green-50 text-primary rounded-full flex items-center justify-center mx-auto">
-                            <span className="material-symbols-outlined text-[36px]" style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}>
-                                check_circle
-                            </span>
-                        </div>
-                        <h3 className="text-xl font-bold text-on-surface">Đăng ký tài khoản thành công!</h3>
-                        <p className="text-on-surface-variant text-sm px-4">
-                            Chào mừng bạn đến với <b>PickleballPro</b>. Hệ thống đang tự động kích hoạt phiên đăng nhập và đưa bạn vào trang quản trị sau vài giây...
-                        </p>
-                        <div className="w-full max-w-[100px] mx-auto pt-2">
-                            {/* Hiệu ứng thanh chạy loading nhỏ */}
-                            <div className="h-1 w-full bg-green-100 rounded-full overflow-hidden">
-                                <div className="h-full w-full bg-primary animate-[pulse_1.5s_infinite]" />
+                                <h3 className="mt-5 text-2xl font-black text-on-surface">Tài khoản đã sẵn sàng</h3>
+                                <p className="muted-copy mx-auto mt-2 max-w-sm">
+                                    Hệ thống đang đưa bạn vào PickleballPro để bắt đầu đặt sân.
+                                </p>
                             </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="hidden lg:block">
+                    <div className="relative overflow-hidden rounded-2xl bg-white p-8 shadow-soft">
+                        <img
+                            src="https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=1200"
+                            alt="Vợt và bóng pickleball"
+                            className="h-[620px] w-full rounded-2xl object-cover"
+                        />
+                        <div className="absolute bottom-12 left-12 right-12 rounded-2xl border border-white/20 bg-ink/70 p-6 text-white backdrop-blur-md">
+                            <h2 className="text-2xl font-black">Tham gia cộng đồng sân chuẩn.</h2>
+                            <p className="mt-2 text-sm leading-6 text-white/72">Theo dõi lịch đặt, nhận thông báo realtime và dùng điểm tích lũy ngay tại checkout.</p>
                         </div>
                     </div>
-                )}
-            </div>
+                </section>
+            </main>
         </div>
     );
 }

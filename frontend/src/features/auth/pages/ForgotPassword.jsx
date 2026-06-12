@@ -1,4 +1,3 @@
-// src/features/auth/pages/ForgotPassword.jsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import FormInput from "@/components/FormInput";
@@ -10,10 +9,10 @@ export default function ForgotPassword() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (event) => {
+        event.preventDefault();
         if (!email) {
-            setErrorMsg("Vui lòng điền địa chỉ Email!");
+            setErrorMsg("Vui lòng điền địa chỉ email!");
             return;
         }
 
@@ -21,7 +20,6 @@ export default function ForgotPassword() {
         setErrorMsg("");
 
         try {
-            // Gọi API yêu cầu cấp lại mật khẩu
             await authService.forgotPassword(email);
             setIsSuccess(true);
         } catch (err) {
@@ -32,86 +30,51 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-gutter relative overflow-hidden font-lexend">
-            <div className="w-full max-w-[440px] bg-white rounded-3xl p-8 shadow-sm border border-outline-variant/30 z-10">
+        <div className="min-h-[100dvh] bg-background">
+            <main className="app-shell flex min-h-[100dvh] items-center justify-center py-10">
+                <div className="surface-panel w-full max-w-[460px] p-6 md:p-8">
+                    <Link to="/login" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+                        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                        Quay lại đăng nhập
+                    </Link>
 
-                {/* Quay lại Login */}
-                <Link to="/login" className="inline-flex items-center gap-2 text-primary font-bold text-label-large mb-6 hover:opacity-80 transition-opacity">
-                    <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                    <span>Quay lại đăng nhập</span>
-                </Link>
-
-                {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-headline-md font-bold text-on-surface mb-2">Quên mật khẩu?</h1>
-                    <p className="text-on-surface-variant text-body-medium">
-                        Đừng lo lắng! Nhập email của bạn dưới đây và chúng tôi sẽ gửi liên kết khôi phục tài khoản.
-                    </p>
-                </div>
-
-                {/* Alert thông báo lỗi */}
-                {errorMsg && (
-                    <div className="mb-4 p-3 bg-error/10 text-error rounded-xl text-body-medium flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[20px]">error</span>
-                        <span>{errorMsg}</span>
+                    <div className="mb-7">
+                        <h1 className="text-3xl font-black tracking-tight text-on-surface">Khôi phục mật khẩu</h1>
+                        <p className="muted-copy mt-2">Nhập email tài khoản, hệ thống sẽ gửi liên kết đặt lại mật khẩu.</p>
                     </div>
-                )}
 
-                {/* Nội dung Form hoặc Trạng thái thành công */}
-                {!isSuccess ? (
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <FormInput
-                            label="Địa chỉ Email"
-                            type="email"
-                            icon="mail"
-                            placeholder="name@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-full transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                                    <span>Đang gửi mail...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="material-symbols-outlined">lock_reset</span>
-                                    <span>Gửi liên kết khôi phục</span>
-                                </>
-                            )}
-                        </button>
-                    </form>
-                ) : (
-                    /* UI Trạng thái gửi mail thành công theo Stitch file */
-                    <div className="text-center py-4 space-y-4">
-                        <div className="w-16 h-16 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center mx-auto">
-              <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                check_circle
-              </span>
+                    {errorMsg && (
+                        <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-error">
+                            <span className="material-symbols-outlined text-[18px]">error</span>
+                            {errorMsg}
                         </div>
-                        <h3 className="text-title-large font-bold text-on-surface">Kiểm tra Hộp thư</h3>
-                        <p className="text-on-surface-variant text-body-medium">
-                            Chúng tôi đã gửi một email hướng dẫn đặt lại mật khẩu đến <strong className="text-on-surface">{email}</strong>.
-                        </p>
-                        <button
-                            onClick={() => setIsSuccess(false)}
-                            className="text-primary font-bold text-label-large hover:underline mt-2 block mx-auto"
-                        >
-                            Gửi lại email khác
-                        </button>
-                    </div>
-                )}
-            </div>
+                    )}
 
-            {/* Sporty Decorative Background Elements */}
-            <div className="fixed -bottom-20 -right-20 w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10"></div>
-            <div className="fixed -top-20 -left-20 w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10"></div>
+                    {!isSuccess ? (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <FormInput label="Email" type="email" icon="mail" placeholder="name@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+                            <button type="submit" disabled={isLoading} className="btn-primary w-full">
+                                {isLoading ? "Đang gửi..." : "Gửi liên kết"}
+                            </button>
+                        </form>
+                    ) : (
+                        <div className="py-4 text-center">
+                            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary-container text-primary">
+                                <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                    mark_email_read
+                                </span>
+                            </div>
+                            <h3 className="mt-5 text-2xl font-black text-on-surface">Kiểm tra hộp thư</h3>
+                            <p className="muted-copy mx-auto mt-2 max-w-sm">
+                                Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến <strong className="text-on-surface">{email}</strong>.
+                            </p>
+                            <button onClick={() => setIsSuccess(false)} className="mt-5 text-sm font-bold text-primary hover:underline">
+                                Dùng email khác
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     );
 }
