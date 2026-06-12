@@ -74,7 +74,7 @@ const UserDetailModal = ({ userId, onClose }) => {
 
                         {/* Booking History */}
                         <div>
-                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                            <h4 className="text-sm font-bold text-gray-700 mb-3">
                                 Lịch sử đặt sân ({data.bookingHistory?.length || 0})
                             </h4>
                             {data.bookingHistory?.length > 0 ? (

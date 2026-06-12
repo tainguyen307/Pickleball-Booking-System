@@ -7,57 +7,37 @@ const menuItems = [
     {
         path: "/admin",
         label: "Dashboard",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-        ),
+        icon: "dashboard",
     },
     {
         path: "/admin/courts",
         label: "Quản lý Sân",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-        ),
+        icon: "sports_tennis",
     },
     {
         path: "/admin/bookings",
         label: "Quản lý Booking",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-        ),
+        icon: "event_available",
     },
     {
         path: "/admin/equipments",
         label: "Quản lý Thiết bị",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-        ),
+        icon: "inventory_2",
     },
     {
         path: "/admin/maintenance",
         label: "Bảo trì",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        ),
+        icon: "build",
     },
     {
         path: "/admin/users",
         label: "Quản lý Users",
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-        ),
+        icon: "group",
+    },
+    {
+        path: "/admin/coupons",
+        label: "Mã giảm giá",
+        icon: "sell",
     },
 ];
 
@@ -72,7 +52,7 @@ export default function AdminLayout() {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-screen bg-[#f6f7f4]">
             {/* Overlay mobile */}
             {sidebarOpen && (
                 <div
@@ -85,16 +65,16 @@ export default function AdminLayout() {
             <aside
                 className={`fixed lg:static inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
                     sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                } bg-gradient-to-b from-[#003d1a] to-[#001a0b] text-white flex flex-col`}
+                } flex flex-col border-r border-gray-200 bg-white text-gray-900`}
             >
                 {/* Logo */}
-                <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg">
-                        <span className="text-xl">🏓</span>
+                <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-5">
+                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shadow-[0_12px_24px_rgba(15,122,75,0.2)]">
+                        <span className="material-symbols-outlined text-[22px]">sports_tennis</span>
                     </div>
                     <div>
                         <h1 className="font-bold text-lg leading-tight">PickleballPro</h1>
-                        <p className="text-[11px] text-emerald-300/70 uppercase tracking-wider">Admin Panel</p>
+                        <p className="text-xs font-semibold text-gray-500">Admin Panel</p>
                     </div>
                     <button
                         onClick={() => setSidebarOpen(false)}
@@ -115,37 +95,35 @@ export default function AdminLayout() {
                             end={item.path === "/admin"}
                             onClick={() => setSidebarOpen(false)}
                             className={({ isActive }) =>
-                                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
                                     isActive
-                                        ? "bg-emerald-500/20 text-emerald-300 shadow-lg shadow-emerald-500/10 border border-emerald-500/20"
-                                        : "text-gray-300 hover:bg-white/5 hover:text-white"
+                                        ? "border border-primary/15 bg-primary-container text-on-primary-container"
+                                        : "text-gray-600 hover:bg-gray-50 hover:text-primary"
                                 }`
                             }
                         >
-                            {item.icon}
+                            <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                             <span>{item.label}</span>
                         </NavLink>
                     ))}
                 </nav>
 
                 {/* User Info */}
-                <div className="px-4 py-4 border-t border-white/10">
+                <div className="border-t border-gray-200 px-4 py-4">
                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-500/30 flex items-center justify-center text-sm font-bold text-emerald-300">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-sm font-bold text-primary">
                             {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{user?.fullName || "Admin"}</p>
-                            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm font-medium"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-100"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
+                        <span className="material-symbols-outlined text-[18px]">logout</span>
                         Đăng xuất
                     </button>
                 </div>
@@ -154,7 +132,7 @@ export default function AdminLayout() {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Top Header */}
-                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shadow-sm">
+                <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm lg:px-8">
                     <button
                         onClick={() => setSidebarOpen(true)}
                         className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
@@ -181,7 +159,7 @@ export default function AdminLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-4 lg:p-8 bg-gray-50">
+                <main className="flex-1 overflow-y-auto bg-[#f6f7f4] p-4 lg:p-8">
                     <Outlet />
                 </main>
             </div>

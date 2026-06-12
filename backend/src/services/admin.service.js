@@ -6,6 +6,11 @@ import CourtSlot from "../models/courtSlot.model.js";
 import Booking from "../models/booking.model.js";
 import Equipment from "../models/equipment.model.js";
 import BookingEquipment from "../models/bookingEquipment.model.js";
+import Review from "../models/review.model.js";
+import RevenueLog from "../models/revenueLog.model.js";
+import revenueService from "./revenue.service.js";
+import notificationService from "./notification.service.js";
+import pointsService from "./points.service.js";
 
 class AdminService {
     // ======================== COURTS ========================
@@ -234,6 +239,37 @@ class AdminService {
         };
     }
 
+    async completeBooking(bookingId) {
+        const booking = await adminRepository.findBookingById(bookingId);
+        if (!booking) throw new Error("Đơn đặt sân không tồn tại!");
+
+        if (booking.paymentStatus !== "PAID") {
+            throw new Error("Chỉ có thể hoàn tất đơn đã thanh toán!");
+        }
+        if (booking.status !== "CONFIRMED") {
+            throw new Error(`Chỉ có thể hoàn tất đơn CONFIRMED! Hiện tại: ${booking.status}`);
+        }
+
+        booking.status = "COMPLETED";
+        await booking.save();
+
+        await revenueService.releaseBookingRevenue(booking);
+
+        await notificationService.createForUser({
+            userId: booking.userId._id || booking.userId,
+            title: "Lượt chơi đã hoàn tất",
+            message: `Đơn ${booking.bookingCode} đã hoàn tất. Bạn có thể đánh giá sân để nhận điểm thưởng.`,
+            type: "BOOKING",
+            referenceId: booking._id,
+            referenceType: "Booking"
+        });
+
+        return {
+            message: "Hoàn tất đơn đặt sân và ghi nhận doanh thu khả dụng thành công!",
+            booking
+        };
+    }
+
     /**
      * Admin hủy booking + Rollback slot + Rollback thiết bị
      */
@@ -266,11 +302,46 @@ class AdminService {
         // 3. Cập nhật trạng thái booking
         booking.status = "CANCELLED";
         booking.cancelReason = cancelReason || "Admin hủy đơn đặt sân.";
+
+        // 4. Hoàn tiền nếu đã thanh toán
+        const wasPaid = booking.paymentStatus === "PAID";
+        if (wasPaid) {
+            booking.paymentStatus = "REFUNDED";
+        }
         await booking.save();
+
+        // 5. Hoàn điểm nếu có dùng điểm
+        if (booking.pointsUsed > 0) {
+            await pointsService.refund(booking.userId._id || booking.userId, booking.pointsUsed, {
+                referenceId: booking._id,
+                referenceType: "Booking",
+                description: "Hoàn điểm do admin hủy booking"
+            });
+        }
+
+        await revenueService.refundBookingRevenue(booking);
+
+        // 6. Thông báo với lý do đầy đủ + hoàn tiền
+        const refundNote = wasPaid
+            ? ` Số tiền ${booking.totalPrice.toLocaleString("vi-VN")}đ sẽ được hoàn lại trong vòng 24 giờ.`
+            : "";
+        const pointNote = booking.pointsUsed > 0
+            ? ` ${booking.pointsUsed} điểm tích lũy đã được hoàn lại vào ví.`
+            : "";
+
+        await notificationService.createForUser({
+            userId: booking.userId._id || booking.userId,
+            title: "Đơn đặt sân đã bị hủy",
+            message: `Đơn ${booking.bookingCode} đã bị hủy. Lý do: ${booking.cancelReason}.${refundNote}${pointNote}`,
+            type: "BOOKING",
+            referenceId: booking._id,
+            referenceType: "Booking"
+        });
 
         return {
             message: "Admin đã hủy đơn đặt sân thành công!",
-            booking
+            booking,
+            refunded: wasPaid
         };
     }
 
@@ -508,18 +579,24 @@ class AdminService {
      * Tổng quan Dashboard
      */
     async getDashboardStats() {
-        const [counts, revenue, occupancy, statusStats] = await Promise.all([
+        const [counts, revenue, occupancy, statusStats, newReviewCount, cashFlow, topCourtsByBooking] = await Promise.all([
             adminRepository.getDashboardCounts(),
             adminRepository.getTotalRevenue(),
             adminRepository.getCourtOccupancyRate(),
-            adminRepository.getBookingStatusStats()
+            adminRepository.getBookingStatusStats(),
+            Review.countDocuments({ createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+            revenueService.getCashFlowStats(),
+            adminRepository.getTopCourtsByBooking()
         ]);
 
         return {
             ...counts,
             ...revenue,
             ...occupancy,
-            bookingStatusBreakdown: statusStats
+            newReviewCount,
+            bookingStatusBreakdown: statusStats,
+            cashFlow,
+            topCourtsByBooking
         };
     }
 
@@ -538,10 +615,21 @@ class AdminService {
         })();
 
         const revenueData = await adminRepository.getRevenueByDateRange(start, end);
+        const cashFlow = await RevenueLog.find({
+            createdAt: {
+                $gte: new Date(`${start}T00:00:00.000Z`),
+                $lte: new Date(`${end}T23:59:59.999Z`)
+            }
+        })
+            .populate("bookingId", "bookingCode status paymentStatus")
+            .populate("courtId", "name")
+            .sort({ createdAt: -1 })
+            .limit(100);
 
         return {
             period: { startDate: start, endDate: end },
-            data: revenueData
+            data: revenueData,
+            cashFlow
         };
     }
 

@@ -6,7 +6,7 @@ const notificationSchema =
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: true
+            default: null
         },
 
         title: {
@@ -16,7 +16,12 @@ const notificationSchema =
 
         content: {
             type: String,
-            required: true
+            default: ""
+        },
+
+        message: {
+            type: String,
+            default: ""
         },
 
         type: {
@@ -25,9 +30,32 @@ const notificationSchema =
                 "BOOKING",
                 "REMINDER",
                 "MAINTENANCE",
-                "PAYMENT"
+                "PAYMENT",
+                "REVIEW",
+                "COUPON",
+                "POINT",
+                "SYSTEM"
             ],
             default: "BOOKING"
+        },
+
+        referenceId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null
+        },
+
+        referenceType: {
+            type: String,
+            default: null
+        },
+
+        recipientRole: {
+            type: String,
+            enum: [
+                "USER",
+                "ADMIN"
+            ],
+            default: "USER"
         },
 
         isRead: {
@@ -47,6 +75,11 @@ notificationSchema.index({
 
 notificationSchema.index({
     isRead: 1
+});
+
+notificationSchema.index({
+    recipientRole: 1,
+    createdAt: -1
 });
 
 export default mongoose.model(

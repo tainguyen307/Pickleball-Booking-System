@@ -1,4 +1,4 @@
-import { body, validationResult } from "express-validator";
+import { body, param, query, validationResult } from "express-validator";
 
 /**
  * 1. Mảng định nghĩa quy tắc kiểm tra (Validation Rules) dành riêng cho cổng Đăng nhập
@@ -75,4 +75,82 @@ export const resetPasswordValidator = [
     body("newPassword")
         .notEmpty().withMessage("Mật khẩu mới không được để trống!")
         .isLength({ min: 6 }).withMessage("Mật khẩu mới bắt buộc phải từ 6 ký tự trở lên!")
+];
+
+export const objectIdParamValidator = (field = "id") => [
+    param(field).isMongoId().withMessage("Mã định danh không hợp lệ!")
+];
+
+export const createReviewValidator = [
+    body("courtId").isMongoId().withMessage("Mã sân không hợp lệ!"),
+    body("bookingId").isMongoId().withMessage("Mã booking không hợp lệ!"),
+    body("rating")
+        .isInt({ min: 1, max: 5 })
+        .withMessage("Số sao đánh giá phải từ 1 đến 5!"),
+    body("comment")
+        .optional({ checkFalsy: true })
+        .isLength({ max: 1500 })
+        .withMessage("Bình luận tối đa 1500 ký tự!"),
+    body("images")
+        .optional()
+        .isArray()
+        .withMessage("Danh sách ảnh đánh giá không hợp lệ!")
+];
+
+export const reviewStatusValidator = [
+    body("status")
+        .isIn(["PENDING", "APPROVED", "HIDDEN", "DELETED"])
+        .withMessage("Trạng thái đánh giá không hợp lệ!")
+];
+
+export const validateCouponValidator = [
+    body("code").notEmpty().withMessage("Vui lòng nhập mã giảm giá!"),
+    body("orderValue")
+        .isFloat({ min: 0 })
+        .withMessage("Giá trị đơn hàng không hợp lệ!"),
+    body("courtId")
+        .optional({ checkFalsy: true })
+        .isMongoId()
+        .withMessage("Mã sân không hợp lệ!")
+];
+
+export const couponAdminValidator = [
+    body("code").notEmpty().withMessage("Mã giảm giá không được để trống!"),
+    body("name").notEmpty().withMessage("Tên mã giảm giá không được để trống!"),
+    body("discountType")
+        .isIn(["PERCENT", "FIXED", "FREE_SHIPPING"])
+        .withMessage("Loại giảm giá không hợp lệ!"),
+    body("discountValue")
+        .isFloat({ min: 0 })
+        .withMessage("Giá trị giảm không hợp lệ!"),
+    body("minOrderValue")
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage("Giá trị đơn tối thiểu không hợp lệ!"),
+    body("startDate")
+        .isISO8601()
+        .withMessage("Ngày bắt đầu không hợp lệ!"),
+    body("endDate")
+        .isISO8601()
+        .withMessage("Ngày kết thúc không hợp lệ!")
+];
+
+export const bookingCreateValidator = [
+    body("slotId").isMongoId().withMessage("Vui lòng chọn đúng ô giờ đặt sân!"),
+    body("couponCode")
+        .optional({ checkFalsy: true })
+        .isLength({ max: 40 })
+        .withMessage("Mã giảm giá tối đa 40 ký tự!"),
+    body("pointsToUse")
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage("Số điểm sử dụng không hợp lệ!"),
+    body("equipments")
+        .optional()
+        .isArray()
+        .withMessage("Danh sách thiết bị không hợp lệ!")
+];
+
+export const recentViewQueryValidator = [
+    query("guestId").optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage("Guest ID không hợp lệ!")
 ];

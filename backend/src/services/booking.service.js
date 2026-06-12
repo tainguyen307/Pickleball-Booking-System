@@ -4,8 +4,12 @@ import courtRepository from "../repositories/court.repository.js";
 import equipmentRepository from "../repositories/equipment.repository.js"; // 🎯 Import kho vật tư
 import BookingEquipment from "../models/bookingEquipment.model.js"; // Bảng trung gian lưu vết thuê
 import CourtSlot from "../models/courtSlot.model.js";
-import Notification from "../models/notification.model.js";
+import Equipment from "../models/equipment.model.js";
 import mongoose from "mongoose";
+import couponService from "./coupon.service.js";
+import pointsService from "./points.service.js";
+import revenueService from "./revenue.service.js";
+import notificationService from "./notification.service.js";
 
 class BookingService {
     /**
@@ -19,7 +23,7 @@ class BookingService {
      * Động cơ đặt sân gốc + Thuê vật tư đi kèm (Atomic Lock + Tồn kho an toàn)
      */
     async createNewBooking(userId, payload) {
-        const { slotId, equipments = [], paymentMethod = "CASH", note = "" } = payload;
+        const { slotId, equipments = [], paymentMethod = "CASH", note = "", couponCode = "", pointsToUse = 0 } = payload;
 
         if (!slotId) throw new Error("Vui lòng chọn chính xác một ô giờ trống trên sơ đồ!");
 
@@ -85,9 +89,36 @@ class BookingService {
             }
 
             // 3. Cộng dồn tài chính toàn diện hóa đơn (Tiền sân + Tiền thiết bị + 5% Phí dịch vụ)
-            const discount = 0;
             const systemFee = Math.round((baseCourtTotalPrice + equipmentTotalPrice) * 0.05);
-            const totalPrice = baseCourtTotalPrice + equipmentTotalPrice + systemFee - discount;
+            const subtotalBeforeDiscount = baseCourtTotalPrice + equipmentTotalPrice + systemFee;
+
+            let coupon = null;
+            let couponDiscount = 0;
+            if (couponCode) {
+                const validatedCoupon = await couponService.validateCoupon(userId, {
+                    code: couponCode,
+                    orderValue: subtotalBeforeDiscount,
+                    courtId: slot.courtId
+                });
+                coupon = validatedCoupon.coupon;
+                couponDiscount = validatedCoupon.discountAmount;
+            }
+
+            const maxPointDiscount = Math.max(0, subtotalBeforeDiscount - couponDiscount);
+            const requestedPoints = parseInt(pointsToUse, 10) || 0;
+            const maxPointsByOrder = Math.floor(maxPointDiscount / (parseInt(process.env.POINT_TO_VND || "1000", 10)));
+            const finalPointsToUse = Math.min(requestedPoints, maxPointsByOrder);
+            let pointDiscount = 0;
+            if (finalPointsToUse > 0) {
+                const { wallet, pointToVnd } = await pointsService.getWallet(userId);
+                if (wallet.balance < finalPointsToUse) {
+                    throw new Error(`Ví điểm chỉ còn ${wallet.balance} điểm, không đủ để sử dụng!`);
+                }
+                pointDiscount = finalPointsToUse * pointToVnd;
+            }
+
+            const discount = couponDiscount + pointDiscount;
+            const totalPrice = Math.max(0, subtotalBeforeDiscount - discount);
 
             // 4. Gọi tầng Repository tạo đơn Booking chính thức
             const booking = await bookingRepository.create({
@@ -100,6 +131,11 @@ class BookingService {
                 durationHours,
                 courtPrice: baseCourtTotalPrice,
                 equipmentPrice: equipmentTotalPrice,
+                systemFee,
+                couponId: coupon?._id || null,
+                couponCode: coupon?.code || null,
+                pointDiscount,
+                pointsUsed: finalPointsToUse,
                 discount,
                 totalPrice,
                 paymentStatus: "UNPAID",
@@ -107,6 +143,23 @@ class BookingService {
                 status: "PENDING",
                 note
             });
+
+            if (coupon) {
+                await couponService.applyUsage({
+                    coupon,
+                    userId,
+                    bookingId: booking._id,
+                    discountAmount: couponDiscount
+                });
+            }
+
+            if (finalPointsToUse > 0) {
+                await pointsService.spend(userId, finalPointsToUse, {
+                    referenceId: booking._id,
+                    referenceType: "Booking",
+                    description: `Sử dụng điểm cho đơn ${booking.bookingCode}`
+                });
+            }
 
             // 5. Đổ mảng vật tư vào bảng trung gian BookingEquipment (Nếu khách có chọn thuê)
             if (equipmentRecordsToInsert.length > 0) {
@@ -121,13 +174,26 @@ class BookingService {
             slot.bookingId = booking._id;
             await slot.save();
 
+            await notificationService.createForAdmins({
+                title: "Có đơn đặt sân mới",
+                message: `Đơn ${bookingCode} vừa được tạo với tổng tiền ${totalPrice.toLocaleString("vi-VN")}đ.`,
+                type: "BOOKING",
+                referenceId: booking._id,
+                referenceType: "Booking",
+                sendMail: true
+            });
+
             return {
                 message: "Khởi tạo đơn đặt sân và thuê vật tư thành công rực rỡ!",
                 bookingCode,
                 bookingId: booking._id,
                 totalPrice,
                 courtPrice: baseCourtTotalPrice,
-                equipmentPrice: equipmentTotalPrice
+                equipmentPrice: equipmentTotalPrice,
+                discount,
+                couponDiscount,
+                pointDiscount,
+                pointsUsed: finalPointsToUse
             };
 
         } catch (error) {
@@ -211,6 +277,16 @@ class BookingService {
         booking.cancelReason = cancelReason || "Khách hàng chủ động yêu cầu hủy lịch trên hệ thống.";
         await booking.save();
 
+        if (booking.pointsUsed > 0) {
+            await pointsService.refund(booking.userId, booking.pointsUsed, {
+                referenceId: booking._id,
+                referenceType: "Booking",
+                description: "Hoàn điểm do khách hủy booking"
+            });
+        }
+
+        await revenueService.refundBookingRevenue(booking);
+
         return {
             message: "Hủy đơn đặt lịch giữ chỗ và hoàn trả thiết bị thành công mỹ mãn!",
             bookingCode: booking.bookingCode,
@@ -258,26 +334,37 @@ class BookingService {
         const booking = await bookingRepository.findById(bookingId);
         if (!booking) throw new Error("Đơn đặt sân không tồn tại!");
 
+        if (booking.userId.toString() !== userId.toString()) {
+            throw new Error("Bạn không có quyền xác nhận thanh toán cho đơn này!");
+        }
+
         if (booking.paymentStatus === "PAID") {
             return {message: "Đơn hàng đã được ghi nhận thanh toán từ trước!", booking};
         }
 
         // Thực thi cập nhật trạng thái trong Database qua Repository
         const updatedBooking = await bookingRepository.updateStatusAfterPayment(bookingId, paymentMethod);
+        await courtRepository.incrementStats(booking.courtId, { bookingCount: 1 });
 
-        // 🔔 TÍNH NĂNG VIP: Tự động đẻ một bản ghi thông báo (Notification) báo cho User
-        try {
-            await Notification.create({
-                userId: booking.userId,
-                title: "💳 Thanh toán thành công rực rỡ!",
-                content: `Hệ thống đã nhận đủ ${booking.totalPrice.toLocaleString()}đ cho mã đơn ${booking.bookingCode}. Sân chơi của bạn đã được khóa giữ chỗ an toàn!`,
-                type: "PAYMENT",
-                isRead: false
-            });
-            console.log(`🔔 [NOTIFICATION] Đã bắn thông báo payment thành công cho User: ${booking.userId}`);
-        } catch (notifErr) {
-            console.error("⚠️ Lỗi không tạo được bản ghi thông báo:", notifErr.message);
-        }
+        await revenueService.holdBookingRevenue(updatedBooking);
+
+        await notificationService.createForUser({
+            userId: booking.userId,
+            title: "Thanh toán thành công",
+            message: `Hệ thống đã nhận đủ ${booking.totalPrice.toLocaleString()}đ cho mã đơn ${booking.bookingCode}. Sân chơi của bạn đã được khóa giữ chỗ an toàn!`,
+            type: "PAYMENT",
+            referenceId: booking._id,
+            referenceType: "Booking",
+            sendMail: true
+        });
+
+        await notificationService.createForAdmins({
+            title: "Booking đã thanh toán",
+            message: `Đơn ${booking.bookingCode} đã thanh toán ${booking.totalPrice.toLocaleString()}đ.`,
+            type: "PAYMENT",
+            referenceId: booking._id,
+            referenceType: "Booking"
+        });
 
         return {
             message: "Xác nhận thanh toán thành công! Đơn hàng đã được kích hoạt hoạt động.",

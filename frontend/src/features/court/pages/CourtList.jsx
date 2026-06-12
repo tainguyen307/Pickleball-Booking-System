@@ -138,15 +138,15 @@ export default function CourtList() {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+            <div className="app-shell py-8 lg:py-10">
 
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-on-background tracking-tight">
+                        <h1 className="section-heading">
                             Khám phá sân bóng
                         </h1>
-                        <p className="text-on-surface-variant mt-1">
+                        <p className="muted-copy mt-2">
                             {pagination.totalItems || 0} sân bóng đang chờ bạn
                         </p>
                     </div>
@@ -154,7 +154,7 @@ export default function CourtList() {
                     {/* Mobile filter button */}
                     <button
                         onClick={() => setIsFilterOpen(!isFilterOpen)}
-                        className="lg:hidden flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all"
+                        className="btn-primary lg:hidden"
                     >
                         <span className="material-symbols-outlined text-[18px]">tune</span>
                         {hasActiveFilters ? "Đang lọc" : "Lọc sân"}
@@ -173,15 +173,15 @@ export default function CourtList() {
                         ${isFilterOpen ? "fixed inset-0 z-50 bg-black/50 lg:relative lg:bg-transparent" : "hidden lg:block"}
                     `}>
                         <form onSubmit={handleApplyFilters} className={`
-                            bg-surface-container-lowest rounded-2xl border border-outline-variant/40 shadow-lg
+                            surface-panel-flat
                             ${isFilterOpen ? "absolute inset-x-4 top-20 bottom-4 overflow-y-auto" : ""}
                             lg:relative lg:inset-auto lg:overflow-visible
                         `}>
                             {/* Filter header */}
-                            <div className="p-5 border-b border-outline-variant/40 flex items-center justify-between">
+                            <div className="flex items-center justify-between border-b border-outline-variant/60 p-5">
                                 <div className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary text-[22px]">tune</span>
-                                    <h2 className="text-lg font-bold text-on-surface">Bộ lọc nâng cao</h2>
+                                    <h2 className="text-lg font-black text-on-surface">Bộ lọc sân</h2>
                                 </div>
                                 <button
                                     type="button"
@@ -204,7 +204,7 @@ export default function CourtList() {
                                         placeholder="Tên câu lạc bộ, thành phố, mã bưu điện..."
                                         value={localSearch}
                                         onChange={(e) => setLocalSearch(e.target.value)}
-                                        className="w-full border border-outline-variant rounded-xl px-4 py-3 text-sm bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                                        className="field-control"
                                     />
                                 </div>
 
@@ -219,7 +219,7 @@ export default function CourtList() {
                                         placeholder="Ví dụ: Thủ Đức, Quận 7, Bình Thạnh..."
                                         value={localLocation}
                                         onChange={(e) => setLocalLocation(e.target.value)}
-                                        className="w-full border border-outline-variant rounded-xl px-4 py-3 text-sm bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                                        className="field-control"
                                     />
                                 </div>
 
@@ -236,10 +236,10 @@ export default function CourtList() {
                                                 key={t.value}
                                                 type="button"
                                                 onClick={() => updateFilter("type", t.value)}
-                                                className={`flex items-center justify-center gap-2 py-3.5 px-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                                                className={`flex items-center justify-center gap-2 rounded-xl px-2 py-3.5 text-sm font-bold transition-all whitespace-nowrap ${
                                                     type === t.value
                                                         ? "bg-primary text-white shadow-md"
-                                                        : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
+                                                        : "bg-white border border-outline-variant text-on-surface-variant hover:border-primary/35 hover:text-primary"
                                                 }`}
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">{t.icon}</span>
@@ -262,7 +262,7 @@ export default function CourtList() {
                                                 placeholder="Từ (đ)"
                                                 value={localMinPrice}
                                                 onChange={(e) => setLocalMinPrice(e.target.value)}
-                                                className="w-full border border-outline-variant rounded-xl px-3 py-3 text-sm bg-surface-container-lowest focus:outline-none focus:border-primary transition-all"
+                                                className="field-control px-3"
                                             />
                                         </div>
                                         <span className="text-outline text-sm">—</span>
@@ -272,7 +272,7 @@ export default function CourtList() {
                                                 placeholder="Đến (đ)"
                                                 value={localMaxPrice}
                                                 onChange={(e) => setLocalMaxPrice(e.target.value)}
-                                                className="w-full border border-outline-variant rounded-xl px-3 py-3 text-sm bg-surface-container-lowest focus:outline-none focus:border-primary transition-all"
+                                                className="field-control px-3"
                                             />
                                         </div>
                                     </div>
@@ -282,14 +282,14 @@ export default function CourtList() {
                                 <div className="space-y-3 pt-2">
                                     <button
                                         type="submit"
-                                        className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all"
+                                        className="btn-primary w-full"
                                     >
                                         Áp dụng bộ lọc
                                     </button>
                                     <button
                                         type="button"
                                         onClick={handleResetAll}
-                                        className="w-full py-3.5 bg-surface-container-high text-on-surface-variant rounded-xl font-medium text-sm hover:bg-surface-container-highest transition-all"
+                                        className="btn-secondary w-full"
                                     >
                                         Xóa tất cả
                                     </button>
@@ -306,7 +306,7 @@ export default function CourtList() {
                                 <span className="text-sm text-on-surface-variant">Đang lọc:</span>
                                 {appliedSearch && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                                        🔍 {appliedSearch.length > 20 ? appliedSearch.slice(0, 20) + "..." : appliedSearch}
+                                        {appliedSearch.length > 20 ? appliedSearch.slice(0, 20) + "..." : appliedSearch}
                                         <button onClick={() => removeFilter("search")} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
                                         </button>
@@ -314,7 +314,7 @@ export default function CourtList() {
                                 )}
                                 {appliedLocation && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                                        📍 {appliedLocation}
+                                        {appliedLocation}
                                         <button onClick={() => removeFilter("location")} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
                                         </button>
@@ -322,7 +322,7 @@ export default function CourtList() {
                                 )}
                                 {type && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                                        {type === "INDOOR" ? "🏠 Trong nhà" : "🌳 Ngoài trời"}
+                                        {type === "INDOOR" ? "Trong nhà" : "Ngoài trời"}
                                         <button onClick={() => updateFilter("type", "")} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
                                         </button>
@@ -330,7 +330,7 @@ export default function CourtList() {
                                 )}
                                 {(appliedMinPrice || appliedMaxPrice) && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                                        💰 {appliedMinPrice || "0"}đ - {appliedMaxPrice || "∞"}đ
+                                        {appliedMinPrice || "0"}đ - {appliedMaxPrice || "∞"}đ
                                         <button onClick={() => { removeFilter("minPrice"); removeFilter("maxPrice"); }} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
                                         </button>
@@ -348,7 +348,7 @@ export default function CourtList() {
                         {/* Results header */}
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold text-on-background">
-                                Available Courts
+                                Sân khả dụng
                                 <span className="text-outline text-sm font-medium ml-2">({pagination.totalItems || 0} kết quả)</span>
                             </h2>
                         </div>
@@ -359,15 +359,15 @@ export default function CourtList() {
                                 {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
                             </div>
                         ) : courts.length === 0 ? (
-                            <div className="text-center py-16 bg-surface-container-lowest rounded-2xl border border-outline-variant/40">
+                            <div className="surface-panel-flat py-16 text-center">
                                 <div className="w-20 h-20 mx-auto bg-surface-container-high rounded-full flex items-center justify-center mb-4">
                                     <span className="material-symbols-outlined text-4xl text-outline">search_off</span>
                                 </div>
-                                <h3 className="text-xl font-semibold text-on-surface mb-2">Không tìm thấy sân bóng</h3>
+                                <h3 className="text-xl font-black text-on-surface mb-2">Không tìm thấy sân bóng</h3>
                                 <p className="text-on-surface-variant mb-6">Hãy thử điều chỉnh bộ lọc hoặc tìm kiếm khác nhé!</p>
                                 <button
                                     onClick={handleResetAll}
-                                    className="px-6 py-2.5 bg-primary text-white rounded-xl font-medium hover:shadow-md transition-all"
+                                    className="btn-primary"
                                 >
                                     Xóa tất cả bộ lọc
                                 </button>

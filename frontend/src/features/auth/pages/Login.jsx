@@ -1,6 +1,5 @@
-// src/features/auth/pages/Login.jsx
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // 🎯 Thêm Link và useNavigate để chuyển trang
+import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import FormInput from "@/components/FormInput";
 import { authService } from "@/services/auth.service";
@@ -12,11 +11,11 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
 
-    const navigate = useNavigate(); // 🎯 Hook điều hướng trang của React Router
+    const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (event) => {
+        event.preventDefault();
         setErrorMsg("");
         try {
             const data = await authService.login(email, password);
@@ -24,115 +23,119 @@ export default function Login() {
             localStorage.setItem("refreshToken", data.refreshToken);
             window.location.href = data.redirectUrl;
         } catch (err) {
-            setErrorMsg(err.response?.data?.message || "Invalid credentials");
+            setErrorMsg(err.response?.data?.message || "Thông tin đăng nhập không hợp lệ.");
         }
     };
 
     return (
-        <div className="bg-background font-lexend text-on-background min-h-screen flex flex-col relative overflow-hidden">
-            {/* Mesh Gradient Background */}
-            <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px]" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-300/10 rounded-full blur-[100px]" />
-
-            <main className="flex-grow flex items-center justify-center p-6 relative z-10">
-                <div className="w-full max-w-[460px] bg-white rounded-2xl shadow-xl shadow-green-900/5 border border-outline-variant p-8 md:p-10">
-
-                    {/* Brand Header */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-primary text-2xl font-black tracking-tighter mb-1">PickleballPro</h1>
-                        <p className="text-on-surface-variant text-sm">Manage your game with precision.</p>
-                    </div>
-
-                    {/* Tab Switcher */}
-                    <div className="flex p-1 bg-surface-container-low rounded-xl mb-8">
-                        {/* Đang ở trang Login nên nút này luôn sáng */}
-                        <button
-                            type="button"
-                            className="flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-primary shadow-sm"
-                        >
-                            Login
-                        </button>
-                        {/* 🎯 Bấm vào đây sẽ nhảy sang trang Đăng ký thực tế */}
-                        <button
-                            type="button"
-                            onClick={() => navigate("/register")}
-                            className="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-on-surface-variant hover:text-primary"
-                        >
-                            Register
-                        </button>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <FormInput label="Email Address" icon="mail" type="email" placeholder="name@club.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-
-                        <div className="space-y-1 relative">
-                            <FormInput label="Password" icon="lock" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}>
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors">
-                                    <span className="material-symbols-outlined text-[20px]">{showPassword ? "visibility_off" : "visibility"}</span>
-                                </button>
-                            </FormInput>
-
-                            {/* 🎯 Nút Quên mật khẩu nằm tinh tế ngay góc dưới ô nhập Password */}
-                            <div className="flex justify-end px-1 mt-1">
-                                <Link
-                                    to="/forgot-password"
-                                    className="text-xs font-semibold text-primary hover:underline transition-all"
-                                >
-                                    Forgot password?
-                                </Link>
+        <div className="min-h-[100dvh] bg-background">
+            <main className="app-shell grid min-h-[100dvh] items-center gap-10 py-10 lg:grid-cols-[0.95fr_1.05fr]">
+                <section className="hidden lg:block">
+                    <div className="relative overflow-hidden rounded-2xl bg-ink p-10 text-white shadow-soft">
+                        <img
+                            src="https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1400"
+                            alt="Người chơi pickleball trên sân"
+                            className="absolute inset-0 h-full w-full object-cover opacity-45"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-br from-ink via-ink/80 to-ink/20" />
+                        <div className="relative min-h-[620px] max-w-md">
+                            <Link to="/" className="inline-flex items-center gap-2 text-sm font-bold text-white/85 hover:text-white">
+                                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                                Về trang chủ
+                            </Link>
+                            <div className="mt-24">
+                                <p className="stat-pill border-white/15 bg-white/10 text-white/80">Player workspace</p>
+                                <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-tight">
+                                    Lịch sân, thanh toán, điểm thưởng trong một tài khoản.
+                                </h1>
+                                <p className="mt-5 text-sm leading-7 text-white/70">
+                                    Đăng nhập để đặt sân nhanh hơn, lưu sân yêu thích và nhận thông báo realtime cho từng booking.
+                                </p>
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        {errorMsg && (
-                            <div className="flex items-center gap-2 text-error text-xs font-bold px-1">
-                                <span className="material-symbols-outlined text-[16px]">error</span>{errorMsg}
+                <section className="mx-auto w-full max-w-[460px]">
+                    <div className="surface-panel p-6 md:p-8">
+                        <div className="mb-7">
+                            <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-primary text-white">
+                                <span className="material-symbols-outlined">sports_tennis</span>
                             </div>
-                        )}
+                            <h1 className="text-3xl font-black tracking-tight text-on-surface">Đăng nhập</h1>
+                            <p className="muted-copy mt-2">Tiếp tục vào PickleballPro để quản lý lịch chơi của bạn.</p>
+                        </div>
 
-                        <button type="submit" className="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-[0.98]">
-                            Sign In to Dashboard
-                        </button>
-                    </form>
+                        <div className="mb-7 grid grid-cols-2 gap-2 rounded-2xl bg-surface-container-low p-1">
+                            <button type="button" className="rounded-xl bg-white py-2.5 text-sm font-bold text-primary shadow-sm">
+                                Đăng nhập
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/register")}
+                                className="rounded-xl py-2.5 text-sm font-bold text-on-surface-variant hover:text-primary"
+                            >
+                                Đăng ký
+                            </button>
+                        </div>
 
-                    {/* Divider */}
-                    <div className="relative py-6 flex items-center">
-                        <div className="flex-grow border-t border-outline-variant"></div>
-                        <span className="mx-4 text-outline text-[10px] uppercase font-bold tracking-widest">Or Continue With</span>
-                        <div className="flex-grow border-t border-outline-variant"></div>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <FormInput label="Email" icon="mail" type="email" placeholder="name@club.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+
+                            <div className="space-y-1">
+                                <FormInput label="Mật khẩu" icon="lock" type={showPassword ? "text" : "password"} placeholder="Nhập mật khẩu" value={password} onChange={(event) => setPassword(event.target.value)}>
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-outline transition-colors hover:text-on-surface">
+                                        <span className="material-symbols-outlined text-[20px]">{showPassword ? "visibility_off" : "visibility"}</span>
+                                    </button>
+                                </FormInput>
+                                <div className="flex justify-end px-1">
+                                    <Link to="/forgot-password" className="text-xs font-bold text-primary hover:underline">
+                                        Quên mật khẩu?
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {errorMsg && (
+                                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-error">
+                                    <span className="material-symbols-outlined text-[18px]">error</span>
+                                    {errorMsg}
+                                </div>
+                            )}
+
+                            <button type="submit" className="btn-primary w-full">
+                                Đăng nhập
+                            </button>
+                        </form>
+
+                        <div className="my-6 flex items-center gap-3">
+                            <div className="h-px flex-1 bg-outline-variant" />
+                            <span className="text-xs font-bold text-outline">Hoặc</span>
+                            <div className="h-px flex-1 bg-outline-variant" />
+                        </div>
+
+                        <div className="flex justify-center">
+                            <GoogleLogin
+                                onSuccess={async (credentialResponse) => {
+                                    setErrorMsg("");
+                                    try {
+                                        const data = await authService.googleLogin(credentialResponse.credential);
+                                        setAuth(data.user, data.accessToken);
+                                        localStorage.setItem("refreshToken", data.refreshToken);
+                                        window.location.href = data.redirectUrl;
+                                    } catch (err) {
+                                        setErrorMsg(err.response?.data?.message || "Google authentication failed.");
+                                    }
+                                }}
+                                onError={() => setErrorMsg("Google Sign-In was unsuccessful.")}
+                                text="signin_with"
+                                theme="outline"
+                                size="large"
+                                width="100%"
+                            />
+                        </div>
                     </div>
-
-                    {/* Google Auth Cluster */}
-                    <div className="flex justify-center w-full col-span-2">
-                        <GoogleLogin
-                            onSuccess={async (credentialResponse) => {
-                                setErrorMsg("");
-                                try {
-                                    const data = await authService.googleLogin(credentialResponse.credential);
-                                    setAuth(data.user, data.accessToken);
-                                    localStorage.setItem("refreshToken", data.refreshToken);
-                                    window.location.href = data.redirectUrl;
-                                } catch (err) {
-                                    setErrorMsg(err.response?.data?.message || "Google authentication failed.");
-                                }
-                            }}
-                            onError={() => setErrorMsg("Google Sign-In Was Unsuccessful.")}
-                            text="signin_with"
-                            theme="outline"
-                            size="large"
-                            width="100%"
-                        />
-                    </div>
-
-                    <p className="mt-8 text-[10px] text-center text-outline font-medium leading-relaxed">
-                        Secure 256-bit SSL encrypted connection. <br />
-                        By signing in, you agree to our <a href="#" className="text-primary font-bold hover:underline">Terms of Service</a>.
-                    </p>
-                </div>
+                </section>
             </main>
-
-            {/* Decorative Lines */}
-            <div className="fixed top-0 left-0 w-1 h-full bg-primary/20 pointer-events-none" />
-            <div className="fixed top-0 right-0 w-1 h-full bg-primary/20 pointer-events-none" />
         </div>
     );
 }

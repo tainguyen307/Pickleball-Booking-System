@@ -4,6 +4,11 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { courtService } from "@/services/court.service";
 import { useAuthStore } from "@/store/authStore";
 import { userService } from "@/services/user.service";
+import { commerceService } from "@/services/commerce.service";
+import { engagementService } from "@/services/engagement.service";
+import FavoriteButton from "@/components/FavoriteButton";
+import ReviewsSection from "@/components/ReviewsSection";
+import CourtRail from "@/components/CourtRail";
 
 export default function CourtDetail() {
     const { id } = useParams();
@@ -31,6 +36,14 @@ export default function CourtDetail() {
     const [note, setNote] = useState("");
     const [bookingLoading, setBookingLoading] = useState(false);
     const [bookingError, setBookingError] = useState("");
+    const [couponCode, setCouponCode] = useState("");
+    const [couponDiscount, setCouponDiscount] = useState(0);
+    const [couponMessage, setCouponMessage] = useState("");
+    const [pointWallet, setPointWallet] = useState(null);
+    const [pointsToUse, setPointsToUse] = useState(0);
+    const [pointToVnd, setPointToVnd] = useState(1000);
+    const [similarCourts, setSimilarCourts] = useState([]);
+    const [recentCourts, setRecentCourts] = useState([]);
 
     // Payment modal states
     const [bookingSuccessData, setBookingSuccessData] = useState(null);
@@ -47,8 +60,12 @@ export default function CourtDetail() {
 
         setShowBookingModal(true);
         setBookingError("");
+        setCouponMessage("");
         try {
-            const res = await userService.getEquipments();
+            const [res, walletRes] = await Promise.all([
+                userService.getEquipments(),
+                commerceService.getPointWallet()
+            ]);
             if (res.success) {
                 setEquipments(res.equipments || []);
                 const initialSelected = {};
@@ -56,6 +73,10 @@ export default function CourtDetail() {
                     initialSelected[eq._id] = 0;
                 });
                 setSelectedEquipments(initialSelected);
+            }
+            if (walletRes.success) {
+                setPointWallet(walletRes.wallet);
+                setPointToVnd(walletRes.pointToVnd || 1000);
             }
         } catch (err) {
             console.error("Lỗi lấy danh sách thiết bị:", err);
@@ -90,12 +111,41 @@ export default function CourtDetail() {
         return total;
     };
 
+    const getBaseCourtPrice = () => court.pricePerHour * (court.slotDuration / 60 || 1);
+    const getSystemFee = () => Math.round((getBaseCourtPrice() + getEquipmentPrice()) * 0.05);
+    const getSubtotal = () => getBaseCourtPrice() + getEquipmentPrice() + getSystemFee();
+    const getPointDiscount = () => Math.min((parseInt(pointsToUse) || 0) * pointToVnd, Math.max(0, getSubtotal() - couponDiscount));
+    const getFinalTotal = () => Math.max(0, getSubtotal() - couponDiscount - getPointDiscount());
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) {
+            setCouponDiscount(0);
+            setCouponMessage("");
+            return;
+        }
+
+        try {
+            const res = await commerceService.validateCoupon({
+                code: couponCode,
+                orderValue: getSubtotal(),
+                courtId: id
+            });
+            if (res.success) {
+                setCouponDiscount(res.discountAmount || 0);
+                setCouponMessage(`Đã áp dụng mã ${res.coupon.code}, giảm ${(res.discountAmount || 0).toLocaleString("vi-VN")}đ`);
+            }
+        } catch (error) {
+            setCouponDiscount(0);
+            setCouponMessage(error.response?.data?.message || "Mã giảm giá không hợp lệ!");
+        }
+    };
+
     const handleConfirmBooking = async () => {
         setBookingLoading(true);
         setBookingError("");
         try {
             const reqEquipments = Object.entries(selectedEquipments)
-                .filter(([_, qty]) => qty > 0)
+                .filter(([, qty]) => qty > 0)
                 .map(([eqId, qty]) => ({
                     equipmentId: eqId,
                     quantity: qty
@@ -105,7 +155,9 @@ export default function CourtDetail() {
                 slotId: selectedSlot.slotId,
                 equipments: reqEquipments,
                 paymentMethod: "BANKING",
-                note
+                note,
+                couponCode: couponCode.trim(),
+                pointsToUse: parseInt(pointsToUse) || 0
             };
 
             const res = await userService.createBooking(payload);
@@ -117,6 +169,8 @@ export default function CourtDetail() {
                             bookingId: res.bookingId,
                             bookingCode: res.bookingCode,
                             totalPrice: res.totalPrice,
+                            discount: res.discount,
+                            rewardMessage: res.pointsUsed > 0 ? `Bạn đã dùng ${res.pointsUsed} điểm.` : "",
                             qrCodeUrl: paymentRes.qrCodeUrl,
                             paymentDescription: paymentRes.paymentDescription
                         });
@@ -125,14 +179,16 @@ export default function CourtDetail() {
                             bookingId: res.bookingId,
                             bookingCode: res.bookingCode,
                             totalPrice: res.totalPrice,
+                            discount: res.discount,
                             qrCodeUrl: `https://img.vietqr.io/image/MB-0900000002-qr_only.png?amount=${res.totalPrice}&addInfo=CHUYEN%20TIEN%20SAN%20${res.bookingCode}`
                         });
                     }
-                } catch (payErr) {
+                } catch {
                     setBookingSuccessData({
                         bookingId: res.bookingId,
                         bookingCode: res.bookingCode,
                         totalPrice: res.totalPrice,
+                        discount: res.discount,
                         qrCodeUrl: `https://img.vietqr.io/image/MB-0900000002-qr_only.png?amount=${res.totalPrice}&addInfo=CHUYEN%20TIEN%20SAN%20${res.bookingCode}`
                     });
                 }
@@ -175,6 +231,10 @@ export default function CourtDetail() {
         setPaymentSuccess(false);
         setNote("");
         setSelectedEquipments({});
+        setCouponCode("");
+        setCouponDiscount(0);
+        setCouponMessage("");
+        setPointsToUse(0);
     };
 
     useEffect(() => {
@@ -202,6 +262,27 @@ export default function CourtDetail() {
         return () => { isMounted = false; };
     }, [id, selectedDate]);
 
+    useEffect(() => {
+        let mounted = true;
+
+        engagementService.recordView(id)
+            .then(res => {
+                if (res.guestId) localStorage.setItem("pickleball-guest-id", res.guestId);
+            })
+            .catch(() => {});
+
+        Promise.all([
+            engagementService.getSimilarCourts(id),
+            engagementService.getRecentlyViewed()
+        ]).then(([similarRes, recentRes]) => {
+            if (!mounted) return;
+            if (similarRes.success) setSimilarCourts(similarRes.courts || []);
+            if (recentRes.success) setRecentCourts((recentRes.courts || []).filter(item => item._id !== id));
+        }).catch(() => {});
+
+        return () => { mounted = false; };
+    }, [id]);
+
     // Hàm xử lý khi người dùng đổi ngày chơi trên bộ lịch UI
     const handleDateChange = (e) => {
         setIsLoading(true);
@@ -213,14 +294,14 @@ export default function CourtDetail() {
             <div className="min-h-screen bg-background pt-16">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                     <div className="animate-pulse space-y-6">
-                        <div className="h-8 bg-surface-variant/40 rounded w-1/4" />
-                        <div className="h-96 bg-gradient-to-br from-surface-variant/40 to-surface-variant/20 rounded-2xl" />
+                        <div className="h-8 bg-surface-container rounded w-1/4" />
+                        <div className="h-96 bg-surface-container rounded-2xl" />
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-6">
-                                <div className="h-32 bg-surface-variant/40 rounded-2xl" />
-                                <div className="h-48 bg-surface-variant/40 rounded-2xl" />
+                                <div className="h-32 bg-surface-container rounded-2xl" />
+                                <div className="h-48 bg-surface-container rounded-2xl" />
                             </div>
-                            <div className="h-96 bg-surface-variant/40 rounded-2xl" />
+                            <div className="h-96 bg-surface-container rounded-2xl" />
                         </div>
                     </div>
                 </div>
@@ -275,11 +356,32 @@ export default function CourtDetail() {
                                 <div className="flex items-center gap-1.5">
                                     <div className="flex items-center gap-0.5">
                                         {[1,2,3,4,5].map((star) => (
-                                            <span key={star} className="material-symbols-outlined text-[18px] text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                            <span
+                                                key={star}
+                                                className={`material-symbols-outlined text-[18px] ${star <= Math.round(court.averageRating || 0) ? "text-amber-400" : "text-gray-300"}`}
+                                                style={{ fontVariationSettings: star <= Math.round(court.averageRating || 0) ? "'FILL' 1" : "'FILL' 0" }}
+                                            >
+                                                star
+                                            </span>
                                         ))}
                                     </div>
-                                    <span className="font-semibold text-on-surface">5.0</span>
-                                    <span className="text-on-surface-variant">(142 đánh giá)</span>
+                                    <span className="font-semibold text-on-surface">{court.averageRating || 0}</span>
+                                    <span className="text-on-surface-variant">({court.reviewCount || 0} đánh giá)</span>
+                                </div>
+                                <div className="w-1 h-1 bg-outline-variant rounded-full" />
+                                <div className="flex items-center gap-1.5 text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[18px]">favorite</span>
+                                    <span>{court.favoriteCount || 0} yêu thích</span>
+                                </div>
+                                <div className="w-1 h-1 bg-outline-variant rounded-full" />
+                                <div className="flex items-center gap-1.5 text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+                                    <span>{court.viewCount || 0} lượt xem</span>
+                                </div>
+                                <div className="w-1 h-1 bg-outline-variant rounded-full" />
+                                <div className="flex items-center gap-1.5 text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[18px]">payments</span>
+                                    <span>{court.bookingCount || 0} lượt đặt</span>
                                 </div>
                                 <div className="w-1 h-1 bg-outline-variant rounded-full" />
                                 <div className="flex items-center gap-1.5 text-on-surface-variant">
@@ -288,6 +390,7 @@ export default function CourtDetail() {
                                 </div>
                             </div>
                         </div>
+                        <FavoriteButton courtId={court._id} />
                     </div>
 
                     {/* Lưới ảnh Bento Gallery bốc URL Cloudinary */}
@@ -347,7 +450,7 @@ export default function CourtDetail() {
                             <div className="overflow-x-auto custom-scrollbar">
                                 <div className="min-w-[1000px] divide-y divide-outline-variant/30">
                                     <div className="flex bg-surface-container-low/60 h-12 items-center">
-                                        <div className="w-56 shrink-0 pl-6 text-xs font-black text-outline uppercase tracking-wider">Danh sách sân nhỏ</div>
+                                        <div className="w-56 shrink-0 pl-6 text-xs font-bold text-outline">Danh sách sân nhỏ</div>
                                         <div className="flex flex-grow justify-between">
                                             {globalTimeSlots.map((time) => (
                                                 <div key={time} className="w-16 text-center text-[11px] font-black text-on-surface-variant tracking-tighter border-l border-outline-variant/10">{time}</div>
@@ -356,8 +459,9 @@ export default function CourtDetail() {
                                     </div>
 
                                     {subCourtsTimeline.length === 0 ? (
-                                        <div className="text-center py-12 text-sm font-semibold text-outline-variant bg-surface-container-low/20">
-                                            📭 Cụm sân này hiện tại chưa được cấu hình các sân thi đấu nhỏ bên trong!
+                                        <div className="text-center py-12 text-sm font-semibold text-outline bg-surface-container-low/20">
+                                            <span className="material-symbols-outlined block text-3xl text-outline-variant mb-2">inbox</span>
+                                            Cụm sân này hiện tại chưa được cấu hình các sân thi đấu nhỏ bên trong.
                                         </div>
                                     ) : (
                                         subCourtsTimeline.map((subCourt) => (
@@ -415,24 +519,24 @@ export default function CourtDetail() {
                     {/* COLUMN TRÁI DƯỚI: CHI TIẾT TIỆN ÍCH */}
                     <div className="lg:col-span-8 space-y-10 pt-4">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/2 rounded-2xl p-4 border border-primary/10 flex items-center gap-3">
+                            <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
                                 <span className="material-symbols-outlined text-2xl text-primary">sports_tennis</span>
                                 <div>
-                                    <p className="text-[10px] text-outline uppercase font-bold tracking-wide">Môi trường</p>
+                                    <p className="text-[11px] text-outline font-bold">Môi trường</p>
                                     <p className="font-bold text-sm text-on-surface mt-0.5">{court.type === "INDOOR" ? "Sân Trong nhà" : "Sân Ngoài trời"}</p>
                                 </div>
                             </div>
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/2 rounded-2xl p-4 border border-primary/10 flex items-center gap-3">
+                            <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
                                 <span className="material-symbols-outlined text-2xl text-primary">schedule</span>
                                 <div>
-                                    <p className="text-[10px] text-outline uppercase font-bold tracking-wide">Thời gian hoạt động</p>
+                                    <p className="text-[11px] text-outline font-bold">Thời gian hoạt động</p>
                                     <p className="font-bold text-sm text-on-surface mt-0.5">{court.openTime || "06:00"} - {court.closeTime || "22:00"}</p>
                                 </div>
                             </div>
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/2 rounded-2xl p-4 border border-primary/10 flex items-center gap-3">
+                            <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
                                 <span className="material-symbols-outlined text-2xl text-primary">timer</span>
                                 <div>
-                                    <p className="text-[10px] text-outline uppercase font-bold tracking-wide">Thời lượng block</p>
+                                    <p className="text-[11px] text-outline font-bold">Thời lượng block</p>
                                     <p className="font-bold text-sm text-on-surface mt-0.5">{court.slotDuration || 60} phút / slot</p>
                                 </div>
                             </div>
@@ -458,9 +562,9 @@ export default function CourtDetail() {
 
                     {/* COLUMN PHẢI DƯỚI: THANH BILLING HOÁ ĐƠN THANH TOÁN */}
                     <div className="lg:col-span-4 pt-4">
-                        <div className="sticky top-24 bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/40 overflow-hidden">
-                            <div className="p-5 bg-gradient-to-r from-primary/10 to-transparent border-b border-outline-variant/30">
-                                <span className="text-xs font-black text-primary uppercase tracking-widest block mb-1">Chi phí gốc cơ sở</span>
+                        <div className="sticky top-24 surface-panel overflow-hidden">
+                            <div className="p-5 border-b border-outline-variant/30">
+                                <span className="text-xs font-bold text-primary block mb-1">Chi phí gốc cơ sở</span>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-3xl font-black text-primary">{court.pricePerHour?.toLocaleString("vi-VN")}đ</span>
                                     <span className="text-on-surface-variant text-xs font-semibold">/ giờ chơi</span>
@@ -514,17 +618,22 @@ export default function CourtDetail() {
                     </div>
 
                 </div>
+                <div className="mt-12 space-y-12">
+                    <ReviewsSection courtId={court._id} court={court} />
+                    <CourtRail title="Sân tương tự" courts={similarCourts} emptyText="Chưa tìm thấy sân tương tự phù hợp." />
+                    <CourtRail title="Đã xem gần đây" courts={recentCourts} emptyText="Bạn chưa xem thêm sân nào khác gần đây." />
+                </div>
             {/* ─── BOOKING & PAYMENT MODAL ─── */}
             {showBookingModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-                    <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-gray-100 overflow-hidden transform scale-100 transition-all duration-300">
+                    <div className="bg-white rounded-2xl w-full max-w-xl shadow-soft border border-gray-100 overflow-hidden transform scale-100 transition-all duration-300">
                         {/* Header */}
-                        <div className="px-6 py-5 bg-gradient-to-r from-[#003d1a] to-[#006622] text-white flex justify-between items-center">
+                        <div className="px-6 py-5 bg-ink text-white flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-lg">
                                     {!bookingSuccessData ? "Xác nhận Đặt lịch & Thuê Đồ" : "Thanh toán Đặt sân"}
                                 </h3>
-                                <p className="text-xs text-emerald-200 mt-0.5">
+                                <p className="text-xs text-white/65 mt-0.5">
                                     {!bookingSuccessData ? "Kiểm tra thông tin chi tiết và dụng cụ" : `Mã đơn hàng: #${bookingSuccessData.bookingCode}`}
                                 </p>
                             </div>
@@ -557,7 +666,7 @@ export default function CourtDetail() {
 
                                 {/* Equipment List */}
                                 <div className="space-y-3">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Thuê dụng cụ kèm theo (Tùy chọn)</h4>
+                                    <h4 className="text-sm font-bold text-gray-700">Thuê dụng cụ kèm theo</h4>
                                     {equipments.length === 0 ? (
                                         <p className="text-xs text-gray-400">Không có dụng cụ khả dụng trong kho.</p>
                                     ) : (
@@ -599,7 +708,7 @@ export default function CourtDetail() {
 
                                 {/* Note */}
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Ghi chú gửi sân</label>
+                                    <label className="text-sm font-bold text-gray-700">Ghi chú gửi sân</label>
                                     <input
                                         type="text"
                                         placeholder="Ví dụ: Cần mượn thêm khăn lau hoặc nước uống..."
@@ -609,11 +718,49 @@ export default function CourtDetail() {
                                     />
                                 </div>
 
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-gray-700">Mã giảm giá</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="VD: PICKLE20"
+                                                value={couponCode}
+                                                onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                                                className="min-w-0 flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleApplyCoupon}
+                                                className="px-3 py-2.5 rounded-xl bg-primary text-white text-xs font-bold"
+                                            >
+                                                Áp dụng
+                                            </button>
+                                        </div>
+                                        {couponMessage && <p className="text-[11px] font-semibold text-primary">{couponMessage}</p>}
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-gray-700">
+                                            Dùng điểm ({pointWallet?.balance || 0} điểm)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max={pointWallet?.balance || 0}
+                                            value={pointsToUse}
+                                            onChange={e => setPointsToUse(Math.min(parseInt(e.target.value) || 0, pointWallet?.balance || 0))}
+                                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                        />
+                                        <p className="text-[11px] text-gray-400">1 điểm = {pointToVnd.toLocaleString("vi-VN")}đ</p>
+                                    </div>
+                                </div>
+
                                 {/* Price breakdown */}
                                 <div className="border-t border-dashed border-gray-200 pt-3 space-y-1.5 text-xs text-gray-500 text-left">
                                     <div className="flex justify-between">
                                         <span>Tiền thuê sân</span>
-                                        <span className="font-semibold text-gray-700">{(court.pricePerHour * (court.slotDuration / 60 || 1)).toLocaleString("vi-VN")}đ</span>
+                                        <span className="font-semibold text-gray-700">{getBaseCourtPrice().toLocaleString("vi-VN")}đ</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Tiền thuê thiết bị</span>
@@ -621,16 +768,28 @@ export default function CourtDetail() {
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Phí dịch vụ hệ thống (5%)</span>
-                                        <span className="font-semibold text-gray-700">{Math.round(( (court.pricePerHour * (court.slotDuration / 60 || 1)) + getEquipmentPrice() ) * 0.05).toLocaleString("vi-VN")}đ</span>
+                                        <span className="font-semibold text-gray-700">{getSystemFee().toLocaleString("vi-VN")}đ</span>
+                                    </div>
+                                    {couponDiscount > 0 && (
+                                        <div className="flex justify-between text-emerald-600">
+                                            <span>Giảm giá coupon</span>
+                                            <span className="font-semibold">-{couponDiscount.toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                    )}
+                                    {getPointDiscount() > 0 && (
+                                        <div className="flex justify-between text-emerald-600">
+                                            <span>Giảm bằng điểm</span>
+                                            <span className="font-semibold">-{getPointDiscount().toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span>Tạm tính</span>
+                                        <span className="font-semibold text-gray-700">{getSubtotal().toLocaleString("vi-VN")}đ</span>
                                     </div>
                                     <div className="flex justify-between font-black text-sm pt-2 border-t text-on-surface">
                                         <span>Tổng chi phí cần trả</span>
                                         <span className="text-primary text-base">
-                                            {(
-                                                (court.pricePerHour * (court.slotDuration / 60 || 1)) +
-                                                getEquipmentPrice() +
-                                                Math.round(( (court.pricePerHour * (court.slotDuration / 60 || 1)) + getEquipmentPrice() ) * 0.05)
-                                            ).toLocaleString("vi-VN")}đ
+                                            {getFinalTotal().toLocaleString("vi-VN")}đ
                                         </span>
                                     </div>
                                 </div>

@@ -241,7 +241,7 @@ export default function MaintenanceManagement() {
                                         </td>
                                         <td className="py-3 px-4 text-center">
                                             <span className="px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
-                                                {r.targetType === "COURT" ? "🏟️ Sân" : "🏓 Thiết bị"}
+                                                {r.targetType === "COURT" ? "Sân" : "Thiết bị"}
                                             </span>
                                         </td>
                                         <td className="py-3 px-4 text-center">

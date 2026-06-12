@@ -11,6 +11,8 @@ import CourtDetail from "../features/court/pages/CourtDetail";
 
 // 👤 User imports
 import UserProfile from "../features/user/pages/UserProfile.jsx";
+import Favorites from "../features/user/pages/Favorites.jsx";
+import RewardPage from "../features/user/pages/RewardPage.jsx";
 
 // 🛡️ Admin imports
 import ProtectedRoute from "./ProtectedRoute.jsx";
@@ -21,6 +23,7 @@ import BookingManagement from "../features/admin/pages/BookingManagement.jsx";
 import EquipmentManagement from "../features/admin/pages/EquipmentManagement.jsx";
 import MaintenanceManagement from "../features/admin/pages/MaintenanceManagement.jsx";
 import UserManagement from "../features/admin/pages/UserManagement.jsx";
+import CouponManagement from "../features/admin/pages/CouponManagement.jsx";
 
 export const router = createBrowserRouter([
     {
@@ -70,6 +73,14 @@ export const router = createBrowserRouter([
                         path: "profile",
                         element: <UserProfile />,
                     },
+                    {
+                        path: "favorites",
+                        element: <Favorites />,
+                    },
+                    {
+                        path: "rewards",
+                        element: <RewardPage />,
+                    },
                 ],
             },
         ],
@@ -105,6 +116,10 @@ export const router = createBrowserRouter([
                     {
                         path: "users",
                         element: <UserManagement />,
+                    },
+                    {
+                        path: "coupons",
+                        element: <CouponManagement />,
                     },
                 ],
             },
