@@ -217,7 +217,7 @@ function BookingCard({ booking, onCancel, onReview }) {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-3.5 bg-surface-container-low border-b border-gray-100">
                 <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="text-xs font-mono font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-lg">
                         #{booking.bookingCode}
@@ -388,9 +388,8 @@ export default function UserProfile() {
     }, []);
 
     useEffect(() => {
-        if (activeTab !== "bookings") return;
         fetchBookings();
-    }, [activeTab, fetchBookings]);
+    }, [fetchBookings]);
 
     // ── Handlers ──
     const handleAvatarChange = (e) => {
@@ -463,127 +462,148 @@ export default function UserProfile() {
         pending: bookings.filter(b => b.status === "PENDING").length,
         cancelled: bookings.filter(b => b.status === "CANCELLED").length,
     };
+    const completionRate = bookingStats.total > 0 ? Math.round((bookingStats.completed / bookingStats.total) * 100) : 0;
+    const lastBooking = bookings[0];
 
     return (
-        <div className="min-h-screen bg-background pt-8 pb-16">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-background pb-16 pt-8">
+            <div className="app-shell max-w-6xl">
+                <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p className="stat-pill mb-3 w-fit">
+                            <span className="material-symbols-outlined text-[15px]">manage_accounts</span>
+                            Tài khoản người chơi
+                        </p>
+                        <h1 className="section-heading">Hồ sơ cá nhân</h1>
+                        <p className="muted-copy mt-2">Quản lý thông tin tài khoản, ảnh đại diện và lịch sử đặt sân.</p>
+                    </div>
+                    <button onClick={() => navigate("/courts")} className="btn-primary w-full md:w-auto">
+                        <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                        Đặt sân mới
+                    </button>
+                </div>
 
-                {/* ─── Hero Card ─────────────────────────────────────── */}
-                <div className="relative bg-ink rounded-2xl overflow-hidden shadow-soft mb-8">
-                    <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-end gap-6 px-8 pt-8 pb-6">
-                        {/* Avatar */}
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-white/30 shadow-xl">
-                                <img
-                                    src={avatarSrc}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                            >
-                                <span className="material-symbols-outlined text-white text-[22px]">photo_camera</span>
-                            </button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleAvatarChange}
-                            />
-                        </div>
-
-                        {/* Info */}
-                        <div className="text-center sm:text-left flex-1">
-                            {loadingProfile ? (
-                                <div className="animate-pulse space-y-2">
-                                    <div className="h-7 bg-white/20 rounded w-48" />
-                                    <div className="h-4 bg-white/10 rounded w-32" />
+                <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+                    <aside className="space-y-4">
+                        <div className="surface-panel overflow-hidden">
+                            <div className="bg-ink px-6 py-6 text-white">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="relative group">
+                                        <div className="h-24 w-24 overflow-hidden rounded-2xl border border-white/20 bg-white/10">
+                                            <img src={avatarSrc} alt="Avatar" className="h-full w-full object-cover" />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="absolute inset-0 grid place-items-center rounded-2xl bg-black/45 opacity-0 transition-opacity group-hover:opacity-100"
+                                            title="Đổi ảnh đại diện"
+                                        >
+                                            <span className="material-symbols-outlined text-white text-[22px]">photo_camera</span>
+                                        </button>
+                                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                                    </div>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="grid h-10 w-10 place-items-center rounded-xl border border-white/15 bg-white/10 text-white/75 transition-all hover:bg-white/15 hover:text-white"
+                                        title="Đăng xuất"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">logout</span>
+                                    </button>
                                 </div>
-                            ) : (
-                                <>
-                                    <h1 className="text-2xl font-black text-white tracking-tight">
-                                        {displayUser?.fullName || "Người dùng"}
-                                    </h1>
-                                    <p className="text-white/65 text-sm mt-0.5">{displayUser?.email}</p>
-                                    <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-                                        <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-xs font-semibold rounded-full border border-emerald-500/30">
-                                            {displayUser?.role === "ADMIN" ? "Admin" : "Player"}
+
+                                <div className="mt-5">
+                                    {loadingProfile ? (
+                                        <div className="animate-pulse space-y-2">
+                                            <div className="h-7 w-44 rounded bg-white/20" />
+                                            <div className="h-4 w-36 rounded bg-white/10" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h2 className="text-2xl font-black tracking-tight">{displayUser?.fullName || "Người dùng"}</h2>
+                                            <p className="mt-1 text-sm text-white/65">{displayUser?.email}</p>
+                                        </>
+                                    )}
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
+                                            {displayUser?.role === "ADMIN" ? "Admin" : "Người chơi"}
                                         </span>
-                                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                                        <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
                                             displayUser?.status === "ACTIVE"
-                                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                                                : "bg-red-500/20 text-red-300 border-red-500/30"
+                                                ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-200"
+                                                : "border-red-400/30 bg-red-400/15 text-red-200"
                                         }`}>
-                                            {displayUser?.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+                                            {displayUser?.status === "ACTIVE" ? "Đang hoạt động" : "Đã khóa"}
                                         </span>
                                     </div>
-                                </>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-px bg-outline-variant/60">
+                                {[
+                                    { label: "Tổng đơn", value: bookingStats.total },
+                                    { label: "Hoàn thành", value: bookingStats.completed },
+                                    { label: "Chờ duyệt", value: bookingStats.pending },
+                                    { label: "Tỉ lệ hoàn tất", value: `${completionRate}%` },
+                                ].map(stat => (
+                                    <div key={stat.label} className="bg-white p-4">
+                                        <p className="text-2xl font-black text-on-surface">{loadingBookings ? "-" : stat.value}</p>
+                                        <p className="mt-1 text-xs font-bold text-on-surface-variant">{stat.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="surface-panel p-5">
+                            <div className="flex items-center gap-3">
+                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-container text-primary">
+                                    <span className="material-symbols-outlined text-[20px]">event_available</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-on-surface">Lượt đặt gần nhất</h3>
+                                    <p className="text-xs text-on-surface-variant">
+                                        {lastBooking ? `${lastBooking.bookingDate} · ${lastBooking.startTime} - ${lastBooking.endTime}` : "Chưa có lượt đặt sân"}
+                                    </p>
+                                </div>
+                            </div>
+                            {lastBooking && (
+                                <div className="mt-4 rounded-xl border border-outline-variant/70 bg-surface-container-low p-3">
+                                    <p className="text-sm font-bold text-on-surface">{lastBooking.courtId?.name || "Sân Pickleball"}</p>
+                                    <p className="mt-1 text-xs text-on-surface-variant">Mã đơn #{lastBooking.bookingCode}</p>
+                                </div>
                             )}
                         </div>
+                    </aside>
 
-                        {/* Logout button */}
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-xl border border-white/20 transition-all"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">logout</span>
-                            Đăng xuất
-                        </button>
-                    </div>
-                </div>
-
-                {/* ─── Stats Row ─────────────────────────────────────── */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                    {[
-                        { label: "Tổng đơn", value: bookingStats.total, icon: "calendar_month", color: "text-blue-600 bg-blue-50" },
-                        { label: "Hoàn thành", value: bookingStats.completed, icon: "check_circle", color: "text-emerald-600 bg-emerald-50" },
-                        { label: "Chờ duyệt", value: bookingStats.pending, icon: "schedule", color: "text-amber-600 bg-amber-50" },
-                    ].map(stat => (
-                        <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${stat.color}`}>
-                                <span className="material-symbols-outlined text-[20px]">{stat.icon}</span>
-                            </div>
-                            <div>
-                                <p className="text-2xl font-black text-gray-800">{stat.value}</p>
-                                <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
-                            </div>
+                    <section className="min-w-0">
+                        <div className="mb-5 flex w-full gap-1 rounded-2xl border border-outline-variant/70 bg-surface-container-low p-1 sm:w-fit">
+                            {[
+                                { id: "profile", label: "Thông tin", icon: "person" },
+                                { id: "bookings", label: "Lịch sử đặt sân", icon: "history" },
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 sm:flex-none ${
+                                        activeTab === tab.id
+                                            ? "bg-white text-primary shadow-sm"
+                                            : "text-on-surface-variant hover:text-on-surface"
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+                                    {tab.label}
+                                </button>
+                            ))}
                         </div>
-                    ))}
-                </div>
-
-                {/* ─── Tab Navigation ─────────────────────────────────── */}
-                <div className="flex gap-1 p-1 bg-gray-100 rounded-2xl mb-6 w-fit">
-                    {[
-                        { id: "profile", label: "Hồ sơ cá nhân", icon: "person" },
-                        { id: "bookings", label: "Lịch sử đặt sân", icon: "history" },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                                activeTab === tab.id
-                                    ? "bg-white text-primary shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
-                            }`}
-                        >
-                            <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
 
                 {/* ─── Tab: Hồ sơ ────────────────────────────────────── */}
                 {activeTab === "profile" && (
                     <div className="surface-panel overflow-hidden">
-                        <div className="px-8 py-6 border-b border-gray-100">
-                            <h2 className="text-lg font-bold text-gray-800">Thông tin cá nhân</h2>
-                            <p className="text-sm text-gray-500 mt-0.5">Cập nhật tên, số điện thoại và ảnh đại diện</p>
+                        <div className="border-b border-gray-100 px-6 py-5 md:px-8">
+                            <h2 className="text-lg font-black text-gray-900">Thông tin cá nhân</h2>
+                            <p className="mt-1 text-sm text-gray-500">Cập nhật tên hiển thị, số điện thoại và ảnh đại diện.</p>
                         </div>
 
-                        <form onSubmit={handleSaveProfile} className="px-8 py-6 space-y-5">
+                        <form onSubmit={handleSaveProfile} className="space-y-5 px-6 py-6 md:px-8">
                             {/* Avatar preview khi đổi */}
                             {avatarPreview && (
                                 <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/20">
@@ -603,25 +623,43 @@ export default function UserProfile() {
                             )}
 
                             {/* Full Name */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Họ và tên</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2">
-                                        <span className="material-symbols-outlined text-gray-400 text-[20px]">person</span>
-                                    </span>
-                                    <input
-                                        type="text"
-                                        value={editForm.fullName}
-                                        onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
-                                        placeholder="Nhập họ và tên..."
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                    />
+                            <div className="grid gap-5 md:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-bold text-gray-700">Họ và tên</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                                            <span className="material-symbols-outlined text-gray-400 text-[20px]">person</span>
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={editForm.fullName}
+                                            onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
+                                            placeholder="Nhập họ và tên..."
+                                            className="field-control pl-10"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Phone */}
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-bold text-gray-700">Số điện thoại</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                                            <span className="material-symbols-outlined text-gray-400 text-[20px]">phone</span>
+                                        </span>
+                                        <input
+                                            type="tel"
+                                            value={editForm.phone}
+                                            onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                            placeholder="Nhập số điện thoại..."
+                                            className="field-control pl-10"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Email (readonly) */}
                             <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Email</label>
+                                <label className="text-sm font-bold text-gray-700">Email</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2">
                                         <span className="material-symbols-outlined text-gray-400 text-[20px]">mail</span>
@@ -630,27 +668,10 @@ export default function UserProfile() {
                                         type="email"
                                         value={displayUser?.email || ""}
                                         readOnly
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-400 cursor-not-allowed outline-none"
+                                        className="field-control cursor-not-allowed bg-gray-50 pl-10 text-gray-400"
                                     />
                                 </div>
-                                <p className="text-xs text-gray-400">Email không thể thay đổi</p>
-                            </div>
-
-                            {/* Phone */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700">Số điện thoại</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2">
-                                        <span className="material-symbols-outlined text-gray-400 text-[20px]">phone</span>
-                                    </span>
-                                    <input
-                                        type="tel"
-                                        value={editForm.phone}
-                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                        placeholder="Nhập số điện thoại..."
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                    />
-                                </div>
+                                <p className="text-xs text-gray-400">Email dùng cho đăng nhập nên không thể thay đổi tại đây.</p>
                             </div>
 
                             {/* Feedback messages */}
@@ -668,11 +689,11 @@ export default function UserProfile() {
                             )}
 
                             {/* Submit */}
-                            <div className="flex items-center gap-3 pt-2">
+                            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm shadow-primary/20"
+                                    className="btn-primary"
                                 >
                                     {saving ? (
                                         <>
@@ -689,7 +710,7 @@ export default function UserProfile() {
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="flex items-center gap-2 px-5 py-3 border border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 text-sm transition-all"
+                                    className="btn-secondary"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">photo_camera</span>
                                     Đổi ảnh đại diện
@@ -736,7 +757,7 @@ export default function UserProfile() {
                             </div>
                         ) : (
                             <>
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                     <h2 className="text-base font-bold text-gray-700">
                                         Tổng cộng {bookings.length} đơn đặt sân
                                     </h2>
@@ -759,6 +780,8 @@ export default function UserProfile() {
                         )}
                     </div>
                 )}
+                    </section>
+                </div>
             </div>
 
             {/* ─── Review Modal ──────────────────────────────────────── */}

@@ -13,47 +13,48 @@ export default function MainLayout() {
         navigate("/login");
     };
 
-    // Hàm xác định class cho NavLink dựa trên trạng thái active
     const getNavLinkClass = ({ isActive }) => {
-        return `px-4 py-1.5 rounded-full transition-all duration-200 font-medium ${
+        return `inline-flex h-10 items-center gap-1.5 rounded-xl px-3.5 text-sm font-bold transition-all duration-200 ${
             isActive
-                ? "text-primary bg-primary/10 font-semibold"
-                : "text-on-surface-variant hover:text-primary hover:bg-primary/5"
+                ? "bg-white text-primary shadow-sm"
+                : "text-on-surface-variant hover:bg-white/70 hover:text-on-surface"
         }`;
     };
 
     return (
         <div className="flex min-h-screen flex-col bg-background text-on-background">
-            <header className="fixed top-0 z-50 w-full border-b border-outline-variant/70 bg-white/88 shadow-[0_10px_30px_rgba(15,122,75,0.05)] backdrop-blur-xl">
+            <header className="fixed top-0 z-50 w-full border-b border-outline-variant/70 bg-white/92 shadow-[0_10px_30px_rgba(15,122,75,0.05)] backdrop-blur-xl">
                 <div className="app-shell">
-                    <div className="flex h-16 items-center justify-between">
+                    <div className="flex h-16 items-center justify-between gap-4">
                         <Link to="/" className="group flex items-center gap-2.5">
-                            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shadow-[0_12px_25px_rgba(15,122,75,0.22)] transition-transform group-hover:-rotate-3">
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-ink text-white shadow-[0_12px_24px_rgba(11,20,16,0.16)] transition-transform group-hover:-rotate-2">
                                 <span className="material-symbols-outlined text-[22px]">sports_tennis</span>
                             </div>
-                            <span className="text-xl font-black tracking-tight text-on-surface">
-                                PickleballPro
-                            </span>
+                            <div className="hidden leading-none sm:block">
+                                <span className="block text-lg font-black tracking-tight text-on-surface">PickleballPro</span>
+                                <span className="mt-1 block text-[11px] font-bold text-on-surface-variant">Booking court system</span>
+                            </div>
                         </Link>
 
-                        <nav className="hidden md:flex items-center gap-0.5 font-body-md text-body-md">
+                        <nav className="hidden items-center gap-1 rounded-2xl border border-outline-variant/60 bg-surface-container-low p-1 md:flex">
                             <NavLink to="/" className={getNavLinkClass} end>
+                                <span className="material-symbols-outlined text-[17px]">home</span>
                                 Trang chủ
                             </NavLink>
                             <NavLink to="/courts" className={getNavLinkClass}>
+                                <span className="material-symbols-outlined text-[17px]">sports_tennis</span>
                                 Sân bóng
                             </NavLink>
                             {isAuthenticated && (
                                 <NavLink to="/user/favorites" className={getNavLinkClass}>
+                                    <span className="material-symbols-outlined text-[17px]">favorite</span>
                                     Yêu thích
                                 </NavLink>
                             )}
                             {isAuthenticated && (
                                 <NavLink to="/user/rewards" className={getNavLinkClass}>
-                                    <span className="flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[15px]">workspace_premium</span>
-                                        Điểm & Ưu đãi
-                                    </span>
+                                    <span className="material-symbols-outlined text-[17px]">workspace_premium</span>
+                                    Ưu đãi
                                 </NavLink>
                             )}
                         </nav>
@@ -61,23 +62,38 @@ export default function MainLayout() {
                         <div className="flex items-center gap-2">
                             {isAuthenticated && user ? (
                                 <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => navigate("/courts")}
+                                        className="hidden items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_10px_22px_rgba(15,122,75,0.18)] transition-all hover:-translate-y-0.5 hover:bg-on-primary-container lg:inline-flex"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                                        Đặt sân
+                                    </button>
                                     <NotificationBell />
-                                    <Link to={user.role === "ADMIN" ? "/admin" : "/user/profile"} className="flex items-center gap-2 group hover:bg-surface-container p-1 rounded-full transition-all duration-200">
+                                    <Link
+                                        to={user.role === "ADMIN" ? "/admin" : "/user/profile"}
+                                        className="group flex items-center gap-2 rounded-2xl border border-outline-variant/70 bg-white p-1 pr-2.5 transition-all duration-200 hover:border-primary/30 hover:bg-primary-container/60"
+                                    >
                                         <div className="relative">
                                             <img
                                                 src={user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=pickle"}
-                                                alt="avatar"
-                                                className="w-8 h-8 rounded-full border-2 border-primary/30 object-cover group-hover:border-primary/70 transition-all duration-300"
+                                                alt={user.fullName || "User avatar"}
+                                                className="h-9 w-9 rounded-xl border border-outline-variant/70 object-cover transition-all duration-300 group-hover:border-primary/50"
                                             />
-                                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white"></div>
+                                            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
                                         </div>
-                                        <span className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors hidden sm:inline">
-                                            {user.fullName?.split(" ")[0] || user.fullName}
+                                        <span className="hidden leading-tight sm:block">
+                                            <span className="block max-w-28 truncate text-sm font-black text-on-surface group-hover:text-primary">
+                                                {user.fullName || "Người dùng"}
+                                            </span>
+                                            <span className="block text-[10px] font-bold text-on-surface-variant">
+                                                {user.role === "ADMIN" ? "Admin" : "Người chơi"}
+                                            </span>
                                         </span>
                                     </Link>
                                     <button
                                         onClick={handleLogout}
-                                        className="rounded-full p-2 text-outline transition-all duration-200 hover:bg-red-50 hover:text-red-500"
+                                        className="grid h-10 w-10 place-items-center rounded-xl text-outline transition-all duration-200 hover:bg-red-50 hover:text-red-500"
                                         title="Đăng xuất"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -91,21 +107,40 @@ export default function MainLayout() {
                                     >
                                         Đăng nhập
                                     </button>
-                                    <button
-                                        onClick={() => navigate("/register")}
-                                        className="btn-primary px-5 py-2"
-                                    >
+                                    <button onClick={() => navigate("/register")} className="btn-primary px-5 py-2">
                                         Đặt sân
                                     </button>
                                 </>
                             )}
                         </div>
                     </div>
+                    <nav className="flex gap-2 overflow-x-auto border-t border-outline-variant/50 py-2 md:hidden">
+                        <NavLink to="/" className={getNavLinkClass} end>
+                            <span className="material-symbols-outlined text-[17px]">home</span>
+                            Trang chủ
+                        </NavLink>
+                        <NavLink to="/courts" className={getNavLinkClass}>
+                            <span className="material-symbols-outlined text-[17px]">sports_tennis</span>
+                            Sân bóng
+                        </NavLink>
+                        {isAuthenticated && (
+                            <NavLink to="/user/favorites" className={getNavLinkClass}>
+                                <span className="material-symbols-outlined text-[17px]">favorite</span>
+                                Yêu thích
+                            </NavLink>
+                        )}
+                        {isAuthenticated && (
+                            <NavLink to="/user/rewards" className={getNavLinkClass}>
+                                <span className="material-symbols-outlined text-[17px]">workspace_premium</span>
+                                Ưu đãi
+                            </NavLink>
+                        )}
+                    </nav>
                 </div>
             </header>
 
             {/* 🌟 MAIN CONTENT */}
-            <main className="flex-grow pt-16">
+            <main className="flex-grow pt-28 md:pt-16">
                 <Outlet />
             </main>
 
