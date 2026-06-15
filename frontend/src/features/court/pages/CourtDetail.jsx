@@ -393,40 +393,117 @@ export default function CourtDetail() {
                         <FavoriteButton courtId={court._id} />
                     </div>
 
-                    {/* Lưới ảnh Bento Gallery bốc URL Cloudinary */}
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-[450px] lg:h-[500px]">
-                        <div className="lg:col-span-3 relative rounded-2xl overflow-hidden bg-surface-container-high group">
-                            <img
-                                src={images[activeImageIndex]}
-                                alt={court.name}
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            />
-                        </div>
-                        <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
-                            {images.slice(0, 3).map((img, idx) => (
-                                <div
-                                    key={idx}
-                                    onClick={() => setActiveImageIndex(idx)}
-                                    className={`relative rounded-xl overflow-hidden h-full lg:h-[calc(33.33%-8px)] cursor-pointer group ${activeImageIndex === idx ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                                >
-                                    <img
-                                        src={img}
-                                        alt={`Thumbnail ${idx + 1}`}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    />
+                    {/* Layout 2 cột: Ảnh bên trái, Booking bên phải */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+                        {/* CỘT TRÁI: Ảnh chính + thumbnail strip */}
+                        <div className="lg:col-span-7 flex flex-col gap-3">
+                            {/* Ảnh chính */}
+                            <div className="relative rounded-2xl overflow-hidden bg-surface-container-high group h-[380px] lg:h-[440px]">
+                                <img
+                                    src={images[activeImageIndex]}
+                                    alt={court.name}
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+                                {/* Số thứ tự ảnh */}
+                                <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                                    {activeImageIndex + 1} / {images.length}
                                 </div>
-                            ))}
+                            </div>
+
+                            {/* Thumbnail strip ngang - chỉ hiển thị ảnh thật, không lặp */}
+                            {images.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                                    {images.map((img, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => setActiveImageIndex(idx)}
+                                            className={`relative flex-shrink-0 w-20 h-16 rounded-xl overflow-hidden transition-all duration-200 ${
+                                                activeImageIndex === idx
+                                                    ? 'ring-2 ring-primary ring-offset-1 opacity-100'
+                                                    : 'opacity-60 hover:opacity-90'
+                                            }`}
+                                        >
+                                            <img
+                                                src={img}
+                                                alt={`Ảnh ${idx + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
+
+                        {/* CỘT PHẢI: Booking panel sticky */}
+                        <div className="lg:col-span-5">
+                            <div className="sticky top-24 surface-panel overflow-hidden">
+                                <div className="p-5 border-b border-outline-variant/30">
+                                    <span className="text-xs font-bold text-primary block mb-1">Chi phí gốc cơ sở</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-black text-primary">{court.pricePerHour?.toLocaleString("vi-VN")}đ</span>
+                                        <span className="text-on-surface-variant text-xs font-semibold">/ giờ chơi</span>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 space-y-5">
+                                    <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/40 text-xs font-semibold space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-on-surface-variant">Ngày đặt lịch:</span>
+                                            <span className="text-on-surface font-bold">{selectedDate}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-on-surface-variant">Sân thi đấu:</span>
+                                            <span className="text-primary font-black">{selectedSlot ? selectedSlot.courtName : "Chưa chọn"}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-on-surface-variant">Khung giờ:</span>
+                                            <span className="text-primary font-black">{selectedSlot ? `${selectedSlot.time} - ${(parseInt(selectedSlot.time) + 1)}:00` : "Chưa chọn"}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2.5 pt-2 text-xs font-semibold text-on-surface-variant">
+                                        <div className="flex justify-between">
+                                            <span>Tiền thuê sân (1 slot)</span>
+                                            <span>{court.pricePerHour?.toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Thuế phí dịch vụ hệ thống (5%)</span>
+                                            <span>{(court.pricePerHour * 0.05).toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                        <div className="flex justify-between font-black text-sm pt-4 border-t border-dashed border-outline-variant text-on-surface">
+                                            <span>Tổng chi phí trả trước</span>
+                                            <span>{selectedSlot ? (court.pricePerHour * 1.05).toLocaleString("vi-VN") : 0}đ</span>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleOpenBooking}
+                                        disabled={!selectedSlot}
+                                        className={`w-full py-4 rounded-xl font-bold text-sm text-white transition-all shadow-md flex items-center justify-center gap-2 ${
+                                            selectedSlot ? "bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-98 cursor-pointer shadow-green-900/10" : "bg-outline-variant text-on-surface-variant/40 cursor-not-allowed"
+                                        }`}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">calendar_checked</span>
+                                        {selectedSlot ? `Tiến Hành Đặt Lịch` : "Vui lòng chọn Sân & Giờ trống"}
+                                    </button>
+                                    <p className="text-center text-[10px] text-outline font-medium">Hỗ trợ thanh toán bảo mật bằng ví điện tử Momo / VNPAY.</p>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
 
             {/* Main Details Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                <div className="space-y-12">
 
                     {/* 📊 BẢNG MA TRẬN TIMELINE HIỂN THỊ DỮ LIỆU THẬT */}
-                    <div className="lg:col-span-12 space-y-6">
+                    <div className="space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-outline-variant/40 shadow-sm">
                             <div>
                                 <h2 className="text-2xl font-black text-on-surface flex items-center gap-2">
@@ -516,103 +593,48 @@ export default function CourtDetail() {
                         </div>
                     </div>
 
-                    {/* COLUMN TRÁI DƯỚI: CHI TIẾT TIỆN ÍCH */}
-                    <div className="lg:col-span-8 space-y-10 pt-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
-                                <span className="material-symbols-outlined text-2xl text-primary">sports_tennis</span>
-                                <div>
-                                    <p className="text-[11px] text-outline font-bold">Môi trường</p>
-                                    <p className="font-bold text-sm text-on-surface mt-0.5">{court.type === "INDOOR" ? "Sân Trong nhà" : "Sân Ngoài trời"}</p>
-                                </div>
-                            </div>
-                            <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
-                                <span className="material-symbols-outlined text-2xl text-primary">schedule</span>
-                                <div>
-                                    <p className="text-[11px] text-outline font-bold">Thời gian hoạt động</p>
-                                    <p className="font-bold text-sm text-on-surface mt-0.5">{court.openTime || "06:00"} - {court.closeTime || "22:00"}</p>
-                                </div>
-                            </div>
-                            <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
-                                <span className="material-symbols-outlined text-2xl text-primary">timer</span>
-                                <div>
-                                    <p className="text-[11px] text-outline font-bold">Thời lượng block</p>
-                                    <p className="font-bold text-sm text-on-surface mt-0.5">{court.slotDuration || 60} phút / slot</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <h2 className="text-2xl font-bold text-on-surface">Giới thiệu cụm sân</h2>
-                            <p className="text-on-surface-variant leading-relaxed text-sm">{court.description || "Trải nghiệm sân pickleball đẳng cấp hàng đầu tại cụm sân chuyên nghiệp với mặt sân đạt chuẩn quốc tế."}</p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h2 className="text-2xl font-bold text-on-surface">Tiện ích miễn phí đi kèm</h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {(court.amenities?.length > 0 ? court.amenities : ["Wifi miễn phí", "Bãi xe ô tô", "Phòng tắm nước nóng"]).map((amenityName, idx) => (
-                                    <div key={idx} className="flex items-center gap-2.5 p-3 rounded-xl bg-surface-container-low/40 border border-outline-variant/20">
-                                        <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                                        <span className="text-xs font-bold text-on-surface-variant">{amenityName}</span>
+                    {/* CHI TIẾT TIỆN ÍCH - Full width dưới timeline */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pt-2">
+                        <div className="lg:col-span-12 space-y-10">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-2xl text-primary">sports_tennis</span>
+                                    <div>
+                                        <p className="text-[11px] text-outline font-bold">Môi trường</p>
+                                        <p className="font-bold text-sm text-on-surface mt-0.5">{court.type === "INDOOR" ? "Sân Trong nhà" : "Sân Ngoài trời"}</p>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* COLUMN PHẢI DƯỚI: THANH BILLING HOÁ ĐƠN THANH TOÁN */}
-                    <div className="lg:col-span-4 pt-4">
-                        <div className="sticky top-24 surface-panel overflow-hidden">
-                            <div className="p-5 border-b border-outline-variant/30">
-                                <span className="text-xs font-bold text-primary block mb-1">Chi phí gốc cơ sở</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black text-primary">{court.pricePerHour?.toLocaleString("vi-VN")}đ</span>
-                                    <span className="text-on-surface-variant text-xs font-semibold">/ giờ chơi</span>
+                                </div>
+                                <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-2xl text-primary">schedule</span>
+                                    <div>
+                                        <p className="text-[11px] text-outline font-bold">Thời gian hoạt động</p>
+                                        <p className="font-bold text-sm text-on-surface mt-0.5">{court.openTime || "06:00"} - {court.closeTime || "22:00"}</p>
+                                    </div>
+                                </div>
+                                <div className="surface-panel-flat rounded-2xl p-4 flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-2xl text-primary">timer</span>
+                                    <div>
+                                        <p className="text-[11px] text-outline font-bold">Thời lượng block</p>
+                                        <p className="font-bold text-sm text-on-surface mt-0.5">{court.slotDuration || 60} phút / slot</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="p-6 space-y-5">
-                                <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/40 text-xs font-semibold space-y-2">
-                                    <div className="flex justify-between">
-                                        <span className="text-on-surface-variant">Ngày đặt lịch:</span>
-                                        <span className="text-on-surface font-bold">{selectedDate}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-on-surface-variant">Sân thi đấu:</span>
-                                        <span className="text-primary font-black">{selectedSlot ? selectedSlot.courtName : "Chưa chọn"}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-on-surface-variant">Khung giờ:</span>
-                                        <span className="text-primary font-black">{selectedSlot ? `${selectedSlot.time} - ${(parseInt(selectedSlot.time) + 1)}:00` : "Chưa chọn"}</span>
-                                    </div>
-                                </div>
+                            <div className="space-y-3">
+                                <h2 className="text-2xl font-bold text-on-surface">Giới thiệu cụm sân</h2>
+                                <p className="text-on-surface-variant leading-relaxed text-sm">{court.description || "Trải nghiệm sân pickleball đẳng cấp hàng đầu tại cụm sân chuyên nghiệp với mặt sân đạt chuẩn quốc tế."}</p>
+                            </div>
 
-                                <div className="space-y-2.5 pt-2 text-xs font-semibold text-on-surface-variant">
-                                    <div className="flex justify-between">
-                                        <span>Tiền thuê sân (1 slot)</span>
-                                        <span>{court.pricePerHour?.toLocaleString("vi-VN")}đ</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Thuế phí dịch vụ hệ thống (5%)</span>
-                                        <span>{(court.pricePerHour * 0.05).toLocaleString("vi-VN")}đ</span>
-                                    </div>
-                                    <div className="flex justify-between font-black text-sm pt-4 border-t border-dashed border-outline-variant text-on-surface">
-                                        <span>Tổng chi phí trả trước</span>
-                                        <span>{selectedSlot ? (court.pricePerHour * 1.05).toLocaleString("vi-VN") : 0}đ</span>
-                                    </div>
+                            <div className="space-y-4">
+                                <h2 className="text-2xl font-bold text-on-surface">Tiện ích miễn phí đi kèm</h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {(court.amenities?.length > 0 ? court.amenities : ["Wifi miễn phí", "Bãi xe ô tô", "Phòng tắm nước nóng"]).map((amenityName, idx) => (
+                                        <div key={idx} className="flex items-center gap-2.5 p-3 rounded-xl bg-surface-container-low/40 border border-outline-variant/20">
+                                            <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+                                            <span className="text-xs font-bold text-on-surface-variant">{amenityName}</span>
+                                        </div>
+                                    ))}
                                 </div>
-
-                                <button
-                                    onClick={handleOpenBooking}
-                                    disabled={!selectedSlot}
-                                    className={`w-full py-4 rounded-xl font-bold text-sm text-white transition-all shadow-md flex items-center justify-center gap-2 ${
-                                        selectedSlot ? "bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-98 cursor-pointer shadow-green-900/10" : "bg-outline-variant text-on-surface-variant/40 cursor-not-allowed"
-                                    }`}
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">calendar_checked</span>
-                                    {selectedSlot ? `Tiến Hành Đặt Lịch` : "Vui lòng chọn Sân & Giờ trống"}
-                                </button>
-                                <p className="text-center text-[10px] text-outline font-medium">Hỗ trợ thanh toán bảo mật bằng ví điện tử Momo / VNPAY.</p>
                             </div>
                         </div>
                     </div>
