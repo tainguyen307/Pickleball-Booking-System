@@ -156,6 +156,18 @@ export default function UserManagement() {
         }
     };
 
+    const handleRoleChange = async (id, newRole, vendorType = null) => {
+        const typeText = vendorType ? (vendorType === "COURT" ? " (Chủ sân)" : " (Cung cấp thiết bị)") : "";
+        if (!window.confirm(`Xác nhận chuyển đổi vai trò tài khoản này thành ${newRole}${typeText}?`)) return;
+        try {
+            await adminService.updateUserRole(id, { role: newRole, vendorType });
+            alert("Cập nhật vai trò người dùng thành công!");
+            fetchUsers();
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message);
+        }
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return "—";
         return new Date(dateStr).toLocaleDateString("vi-VN");
@@ -185,6 +197,9 @@ export default function UserManagement() {
                         <option value="">Tất cả role</option>
                         <option value="USER">User</option>
                         <option value="ADMIN">Admin</option>
+                        <option value="VENDOR">Vendor</option>
+                        <option value="SHIPPER">Shipper</option>
+                        <option value="MAINTENANCE_STAFF">Thợ bảo trì</option>
                     </select>
                     <select
                         value={filters.status}
@@ -247,9 +262,31 @@ export default function UserManagement() {
                                         </td>
                                         <td className="py-3 px-4 text-gray-600">{user.phone || "—"}</td>
                                         <td className="py-3 px-4 text-center">
-                                            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${user.role === "ADMIN" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
-                                                {user.role}
-                                            </span>
+                                            {user.role === "ADMIN" ? (
+                                                <span className="px-2 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-700">
+                                                    ADMIN
+                                                </span>
+                                            ) : (
+                                                <select
+                                                    value={user.role === "VENDOR" ? `VENDOR_${user.vendorType || "COURT"}` : user.role}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val.startsWith("VENDOR_")) {
+                                                            const type = val.split("_")[1];
+                                                            handleRoleChange(user._id, "VENDOR", type);
+                                                        } else {
+                                                            handleRoleChange(user._id, val, null);
+                                                        }
+                                                    }}
+                                                    className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <option value="USER">USER</option>
+                                                    <option value="SHIPPER">SHIPPER (Giao hàng)</option>
+                                                    <option value="MAINTENANCE_STAFF">THỢ BẢO TRÌ</option>
+                                                    <option value="VENDOR_COURT">VENDOR (Chủ sân)</option>
+                                                    <option value="VENDOR_EQUIPMENT">VENDOR (Cung cấp thiết bị)</option>
+                                                </select>
+                                            )}
                                         </td>
                                         <td className="py-3 px-4 text-center">
                                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[user.status]}`}>

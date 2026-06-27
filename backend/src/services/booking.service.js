@@ -1,11 +1,14 @@
 // src/services/booking.service.js (MÔI TRƯỜNG BACKEND)
 import bookingRepository from "../repositories/booking.repository.js";
+import Booking from "../models/booking.model.js";
 import courtRepository from "../repositories/court.repository.js";
 import equipmentRepository from "../repositories/equipment.repository.js"; // 🎯 Import kho vật tư
 import BookingEquipment from "../models/bookingEquipment.model.js"; // Bảng trung gian lưu vết thuê
 import CourtSlot from "../models/courtSlot.model.js";
+import SubCourt from "../models/subCourt.model.js";
 import Equipment from "../models/equipment.model.js";
 import mongoose from "mongoose";
+import { randomUUID } from "crypto"; // ✅ Fix #2: dùng UUID thay vì timestamp để tránh trùng bookingCode
 import couponService from "./coupon.service.js";
 import pointsService from "./points.service.js";
 import revenueService from "./revenue.service.js";
@@ -14,9 +17,10 @@ import notificationService from "./notification.service.js";
 class BookingService {
     /**
      * API hỗ trợ Frontend lấy danh sách vật tư hiển thị lên khu vực tích chọn
+     * ✅ Fix #10: Lọc theo courtId nếu có, tránh hiển thị thiết bị của sân khác địa phương
      */
-    async getAllAvailableEquipments() {
-        return await equipmentRepository.findAvailableEquipments();
+    async getAllAvailableEquipments(courtId = null) {
+        return await equipmentRepository.findAvailableEquipments(courtId);
     }
 
     /**
@@ -29,6 +33,17 @@ class BookingService {
 
         // 🎯 ATOMIC LOCK: Khóa sân chống trùng lịch
         const objectIdSlot = new mongoose.Types.ObjectId(slotId);
+        const slotCheck = await CourtSlot.findById(objectIdSlot);
+        if (!slotCheck) {
+            throw new Error("Khung giờ không tồn tại!");
+        }
+
+        const nowStr = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+        const slotDateTimeStr = `${slotCheck.date} ${slotCheck.startTime}:00`;
+        if (slotDateTimeStr < nowStr) {
+            throw new Error("Khung giờ này đã trôi qua, không thể đặt lịch!");
+        }
+
         const slot = await CourtSlot.findOneAndUpdate(
             { _id: objectIdSlot, isBooked: false },
             { $set: { isBooked: true } },
@@ -39,7 +54,17 @@ class BookingService {
             throw new Error("Khung giờ này vừa mới có người nhanh tay đặt lịch mất rồi! Vui lòng chọn ô giờ khác.");
         }
 
-        const bookingCode = `BK-${Date.now().toString().slice(-8).toUpperCase()}`;
+        // Kiểm tra xem SubCourt của slot này có đang bảo trì không
+        const subCourt = await SubCourt.findById(slot.subCourtId);
+        if (!subCourt || subCourt.status !== "AVAILABLE") {
+            // Hoàn tác (rollback) đặt slot
+            await CourtSlot.findByIdAndUpdate(slotId, { $set: { isBooked: false, bookingId: null } });
+            throw new Error("Sân nhỏ này đang trong trạng thái bảo trì hoặc không khả dụng!");
+        }
+
+        // ✅ Fix #2: Dùng randomUUID() thay vì timestamp để bookingCode không bao giờ trùng
+        // UUID v4 đảm bảo uniqueness toàn cục, kể cả khi nhiều request đến trong cùng 1ms
+        const bookingCode = `BK-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
         const rollbackEquipmentList = []; // Mảng lưu vết để hoàn tác tồn kho nếu sập nguồn giữa chừng
 
         try {
@@ -61,9 +86,26 @@ class BookingService {
                     throw new Error(`Thiết bị vật tư hiện không sẵn sàng cho thuê!`);
                 }
 
-                // Kiểm tra xem trong kho còn đủ số lượng khách yêu cầu không
-                if (eq.availableQuantity < item.quantity) {
-                    throw new Error(`Số lượng "${eq.name}" trong kho không đủ! (Hiện còn: ${eq.availableQuantity})`);
+                // Tính số lượng đã được thuê trong khung giờ của slot này
+                const overlappingBookings = await Booking.find({
+                    status: { $in: ["PENDING", "CONFIRMED", "COMPLETED"] },
+                    bookingDate: slot.date,
+                    startTime: { $lt: slot.endTime },
+                    endTime: { $gt: slot.startTime }
+                });
+                const overlappingBookingIds = overlappingBookings.map(b => b._id);
+                
+                const rentedEquipments = await BookingEquipment.find({
+                    bookingId: { $in: overlappingBookingIds },
+                    equipmentId: eq._id,
+                    returnStatus: "RENTING"
+                });
+                const rentedQtyAtSlot = rentedEquipments.reduce((sum, re) => sum + re.quantity, 0);
+
+                const effectiveAvailable = eq.availableQuantity - (eq.maintenanceQuantity || 0);
+                const rentableQuantity = effectiveAvailable - rentedQtyAtSlot;
+                if (rentableQuantity < item.quantity) {
+                    throw new Error(`Thiết bị "${eq.name}" trong khung giờ ${slot.startTime}-${slot.endTime} chỉ còn ${rentableQuantity} cái khả dụng!`);
                 }
 
                 // Thuật toán tính tiền: Theo giờ (HOUR) thì nhân durationHours, theo lượt (TURN) thì giữ nguyên
@@ -81,16 +123,12 @@ class BookingService {
                     subtotal: itemSubtotal,
                     returnStatus: "RENTING"
                 });
-
-                // Trừ số lượng khả dụng trong kho và lưu vết để phòng hờ rollback
-                eq.availableQuantity -= item.quantity;
-                await eq.save();
-                rollbackEquipmentList.push({ instance: eq, qty: item.quantity });
             }
 
             // 3. Cộng dồn tài chính toàn diện hóa đơn (Tiền sân + Tiền thiết bị + 5% Phí dịch vụ)
+            const finalShippingFee = 0;
             const systemFee = Math.round((baseCourtTotalPrice + equipmentTotalPrice) * 0.05);
-            const subtotalBeforeDiscount = baseCourtTotalPrice + equipmentTotalPrice + systemFee;
+            const subtotalBeforeDiscount = baseCourtTotalPrice + equipmentTotalPrice + systemFee + finalShippingFee;
 
             let coupon = null;
             let couponDiscount = 0;
@@ -124,6 +162,7 @@ class BookingService {
             const booking = await bookingRepository.create({
                 bookingCode,
                 userId,
+                slotId: slot._id, // ✅ Fix #3: Lưu slotId để rollback chính xác khi cancel
                 courtId: slot.courtId,
                 bookingDate: slot.date,
                 startTime: slot.startTime,
@@ -183,6 +222,18 @@ class BookingService {
                 sendMail: true
             });
 
+            if (court.vendorId) {
+                await notificationService.createForUser({
+                    userId: court.vendorId,
+                    title: "Có đơn đặt sân mới tại cụm sân của bạn",
+                    message: `Đơn ${bookingCode} vừa được đặt tại sân ${court.name} với tổng tiền ${totalPrice.toLocaleString("vi-VN")}đ.`,
+                    type: "BOOKING",
+                    referenceId: booking._id,
+                    referenceType: "Booking",
+                    sendMail: true
+                });
+            }
+
             return {
                 message: "Khởi tạo đơn đặt sân và thuê vật tư thành công rực rỡ!",
                 bookingCode,
@@ -201,18 +252,35 @@ class BookingService {
             // 1. Nhả lại slot giờ sang trống tránh treo sân
             await CourtSlot.findByIdAndUpdate(slotId, { $set: { isBooked: false, bookingId: null } });
 
-            // 2. Hoàn trả lại số lượng thiết bị vào kho nếu đã lỡ trừ trước khi sập DB
-            for (const rollback of rollbackEquipmentList) {
-                rollback.instance.availableQuantity += rollback.qty;
-                await rollback.instance.save();
-            }
+            // 2. Không cần hoàn trả lại số lượng thiết bị vào kho vì thiết bị chỉ được check slot-based
+            // (rollbackEquipmentList trống)
             throw error;
         }
     }
     async getUserBookingHistory(userId) {
         if (!userId) throw new Error("Mã định danh người dùng không hợp lệ!");
+        await this.autoCompletePastBookings();
 
         const bookings = await bookingRepository.findByUserId(userId);
+        if (bookings && bookings.length > 0) {
+            const bookingIds = bookings.map(b => b._id);
+            const equipmentRentals = await BookingEquipment.find({ bookingId: { $in: bookingIds } })
+                .populate("equipmentId", "name type image rentalType rentalPrice");
+            
+            return bookings.map(b => {
+                const bObj = b.toObject();
+                bObj.equipmentItems = equipmentRentals
+                    .filter(eq => eq.bookingId.toString() === b._id.toString())
+                    .map(eq => ({
+                        equipmentId: eq.equipmentId,
+                        quantity: eq.quantity,
+                        rentalPrice: eq.rentalPrice,
+                        subtotal: eq.subtotal,
+                        returnStatus: eq.returnStatus
+                    }));
+                return bObj;
+            });
+        }
         return bookings;
     }
     async cancelBookingByUser(userId, bookingId, cancelReason) {
@@ -234,8 +302,11 @@ class BookingService {
 
         // 2. 🕒 THUẬT TOÁN KIỂM TRA CHẶN 36 TIẾNG CHUẨN THỜI GIAN THỰC
         // Kết hợp bookingDate (YYYY-MM-DD) và startTime (HH:mm) để ra mốc thời gian đá thực tế
-        const matchDateTimeString = `${booking.bookingDate}T${booking.startTime}:00`;
-        const matchTime = new Date(matchDateTimeString); // Mốc ra sân
+        // ✅ Fix #7: Append "+07:00" để Node.js parse đúng múi giờ Việt Nam (UTC+7)
+        // Nếu không có suffix, new Date("2026-06-20T08:00:00") được coi là UTC → lệch 7 tiếng!
+        const VN_TZ_OFFSET = "+07:00";
+        const matchDateTimeString = `${booking.bookingDate}T${booking.startTime}:00${VN_TZ_OFFSET}`;
+        const matchTime = new Date(matchDateTimeString); // Mốc ra sân (giờ VN)
         const now = new Date(); // Thời điểm hiện tại bấm nút hủy
 
         // Tính khoảng cách thời gian theo đơn vị Mili-giây
@@ -251,22 +322,21 @@ class BookingService {
         }
 
         // 3. 🛡️ TIẾN HÀNH HOÀN TÁC HỆ THỐNG (BẮT ĐẦU ROLLBACK DATA)
-        // Bước A: Tìm và nhả xích ô giờ chơi quay về Trống (isBooked = false)
-        await CourtSlot.findOneAndUpdate(
-            { courtId: booking.courtId, date: booking.bookingDate, startTime: booking.startTime },
-            { $set: { isBooked: false, bookingId: null } }
-        );
+        // Bước A: ✅ Fix #3 — Dùng booking.slotId để unlock đúng slot, tránh unlock nhầm SubCourt khác
+        if (booking.slotId) {
+            await CourtSlot.findByIdAndUpdate(booking.slotId, { $set: { isBooked: false, bookingId: null } });
+        } else {
+            // Fallback cho các booking cũ chưa có slotId
+            await CourtSlot.findOneAndUpdate(
+                { courtId: booking.courtId, date: booking.bookingDate, startTime: booking.startTime },
+                { $set: { isBooked: false, bookingId: null } }
+            );
+        }
 
         // Bước B: Hoàn trả lại số lượng tồn kho vật tư (Nếu đơn này có thuê đồ kèm)
         if (booking.equipmentPrice > 0) {
             const rentedItems = await BookingEquipment.find({ bookingId: booking._id });
-
             for (const item of rentedItems) {
-                await Equipment.findByIdAndUpdate(item.equipmentId, {
-                    $inc: { availableQuantity: item.quantity } // Trả lại đúng số lượng vào kho khả dụng
-                });
-
-                // Cập nhật trạng thái đồ thuê sang RETURNED hoặc hủy
                 item.returnStatus = "RETURNED";
                 await item.save();
             }
@@ -275,6 +345,12 @@ class BookingService {
         // Bước C: Cập nhật trạng thái đơn Booking sang HỦY
         booking.status = "CANCELLED";
         booking.cancelReason = cancelReason || "Khách hàng chủ động yêu cầu hủy lịch trên hệ thống.";
+
+        // ✅ Fix #2: Đổi paymentStatus = REFUNDED nếu booking đã PAID (đồng bộ với Admin cancel)
+        const wasPaid = booking.paymentStatus === "PAID";
+        if (wasPaid) {
+            booking.paymentStatus = "REFUNDED";
+        }
         await booking.save();
 
         if (booking.pointsUsed > 0) {
@@ -285,7 +361,16 @@ class BookingService {
             });
         }
 
-        await revenueService.refundBookingRevenue(booking);
+        // ✅ Fix #9: Hoàn lại lượt dùng coupon (xóa CouponUsage + giảm usedCount)
+        if (booking.couponId) {
+            await couponService.rollbackUsage(booking._id);
+        }
+
+        // ✅ Fix Section 8: Chỉ gọi refundBookingRevenue khi booking đã PAID
+        // Dùng biến wasPaid (tính trước khi save) vì paymentStatus đã bị đổi sang REFUNDED
+        if (wasPaid) {
+            await revenueService.refundBookingRevenue(booking);
+        }
 
         return {
             message: "Hủy đơn đặt lịch giữ chỗ và hoàn trả thiết bị thành công mỹ mãn!",
@@ -370,6 +455,70 @@ class BookingService {
             message: "Xác nhận thanh toán thành công! Đơn hàng đã được kích hoạt hoạt động.",
             booking: updatedBooking
         };
+    }
+
+    async autoCompletePastBookings() {
+        try {
+            const localDateTime = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+            const match = localDateTime.match(/(\d{4}-\d{2}-\d{2})[,\s]+(\d{2}:\d{2})/);
+            let currentDate = "";
+            let currentTime = "";
+            if (match) {
+                currentDate = match[1];
+                currentTime = match[2];
+            } else {
+                const [d, t] = localDateTime.replace(",", "").split(" ");
+                currentDate = d;
+                currentTime = t.substring(0, 5);
+            }
+
+            // Tìm tất cả booking CONFIRMED đã quá giờ chơi
+            const expiredBookings = await Booking.find({
+                status: "CONFIRMED",
+                $or: [
+                    { bookingDate: { $lt: currentDate } },
+                    { bookingDate: currentDate, endTime: { $lte: currentTime } }
+                ]
+            });
+
+            if (expiredBookings.length > 0) {
+                console.log(`[Auto-Complete] Phát hiện ${expiredBookings.length} booking đã qua thời gian chơi. Đang tự động hoàn tất...`);
+                for (const booking of expiredBookings) {
+                    booking.status = "COMPLETED";
+                    await booking.save();
+
+                    try {
+                        await revenueService.releaseBookingRevenue(booking);
+                    } catch (revErr) {
+                        console.error(`[Auto-Complete] Lỗi release booking revenue cho đơn ${booking._id}:`, revErr.message);
+                    }
+
+                    if (booking.equipmentPrice > 0) {
+                        await BookingEquipment.updateMany(
+                            { bookingId: booking._id, returnStatus: "RENTING" },
+                            { $set: { returnStatus: "RETURNED" } }
+                        );
+                    }
+                }
+            }
+
+            // Dọn dẹp thiết bị ở trạng thái RENTING của các booking đã COMPLETED hoặc CANCELLED trước đó
+            const finishedBookings = await Booking.find({
+                status: { $in: ["COMPLETED", "CANCELLED"] }
+            });
+            const finishedBookingIds = finishedBookings.map(b => b._id);
+            if (finishedBookingIds.length > 0) {
+                const res = await BookingEquipment.updateMany(
+                    { bookingId: { $in: finishedBookingIds }, returnStatus: "RENTING" },
+                    { $set: { returnStatus: "RETURNED" } }
+                );
+                if (res.modifiedCount > 0) {
+                    console.log(`[Auto-Complete] Tự động cập nhật hoàn trả thiết bị cho ${res.modifiedCount} bản ghi đã hoàn tất từ trước.`);
+                }
+            }
+        } catch (err) {
+            console.error("[Auto-Complete] Lỗi khi chạy tự động hoàn tất bookings:", err.message);
+        }
     }
 }
 

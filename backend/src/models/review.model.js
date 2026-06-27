@@ -37,7 +37,7 @@ const reviewSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ["PENDING", "APPROVED", "HIDDEN", "DELETED"],
-        default: "APPROVED"
+        default: "PENDING"  // ✅ Fix: Mọi review đều phải chờ Admin duyệt trước khi public
     }
 }, {
     timestamps: true

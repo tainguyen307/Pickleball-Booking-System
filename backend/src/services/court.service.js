@@ -64,24 +64,38 @@ class CourtService {
             throw new Error("Cụm sân này không tồn tại hoặc đã bị tạm ẩn!");
         }
 
-        const targetDate = dateQuery || new Date().toLocaleDateString("sv-SE");
+        const targetDate = dateQuery || new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
 
-        // 2. Lấy danh sách tất cả các sân nhỏ thuộc cụm này
-        const subCourts = await SubCourt.find({ courtId, status: "AVAILABLE" });
+        // 2. Lấy danh sách tất cả các sân nhỏ thuộc cụm này (bao gồm cả sân đang bảo trì, chỉ ẩn sân HIDDEN)
+        const subCourts = await SubCourt.find({ courtId, status: { $ne: "HIDDEN" } });
 
         // 3. Lấy tất cả các ô giờ đã tạo của cụm này trong ngày được chọn
         const slots = await CourtSlot.find({ courtId, date: targetDate });
+
+        const nowStr = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
 
         // 🎯 THUẬT TOÁN ĐỒNG BỘ: Gom nhóm (Group) các ô giờ thật lồng vào từng Sân nhỏ tương ứng
         const timelineMatrix = subCourts.map(sub => {
             // Lọc ra các slot thuộc về cái sân nhỏ này
             const subCourtSlots = slots
                 .filter(slot => slot.subCourtId.toString() === sub._id.toString())
-                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                .map(slot => {
+                    const slotObj = slot.toObject();
+                    const slotDateTimeStr = `${slot.date} ${slot.startTime}:00`;
+                    if (slotDateTimeStr < nowStr) {
+                        slotObj.isPast = true; // Đánh dấu ô giờ đã trôi qua
+                    }
+                    if (sub.status === "MAINTENANCE") {
+                        slotObj.isMaintenance = true; // Đánh dấu ô giờ đang bảo trì
+                    }
+                    return slotObj;
+                });
 
             return {
                 _id: sub._id,
                 name: sub.name,
+                status: sub.status,
                 slots: subCourtSlots // Mảng các ô giờ thật chạy theo thời gian thực!
             };
         });

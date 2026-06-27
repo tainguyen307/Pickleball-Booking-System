@@ -7,7 +7,8 @@ export const loginValidator = [
     body("email")
         .notEmpty().withMessage("Email không được để trống!")
         .isEmail().withMessage("Email không đúng định dạng tài khoản hợp lệ!")
-        .normalizeEmail(), // Tự động làm sạch định dạng email (chuẩn hóa chữ thường, xóa khoảng trắng)
+        .trim()
+        .toLowerCase(),
 
     body("password")
         .notEmpty().withMessage("Mật khẩu nhập vào không được để trống!")
@@ -46,7 +47,8 @@ export const registerValidator = [
     body("email")
         .notEmpty().withMessage("Email không được để trống!")
         .isEmail().withMessage("Email không đúng định dạng hợp lệ!")
-        .normalizeEmail(),
+        .trim()
+        .toLowerCase(),
 
     body("password")
         .notEmpty().withMessage("Mật khẩu không được để trống!")
@@ -60,17 +62,22 @@ export const forgotPasswordValidator = [
     body("email")
         .notEmpty().withMessage("Vui lòng nhập địa chỉ Email của bạn!")
         .isEmail().withMessage("Địa chỉ Email không đúng định dạng hợp lệ!")
-        .normalizeEmail()
+        .trim()
+        .toLowerCase()
 ];
 /**
  * 5. Quy tắc kiểm tra dữ liệu đầu vào cho cổng Đổi mật khẩu mới (Reset Password)
  */
 export const resetPasswordValidator = [
-    body("userId")
-        .notEmpty().withMessage("Thiếu thông tin ID người dùng!"),
+    body("email")
+        .notEmpty().withMessage("Email không được để trống!")
+        .isEmail().withMessage("Email không đúng định dạng hợp lệ!")
+        .trim()
+        .toLowerCase(),
 
-    body("token")
-        .notEmpty().withMessage("Thiếu mã xác thực token khôi phục!"),
+    body("otpCode")
+        .notEmpty().withMessage("Vui lòng nhập mã OTP xác thực!")
+        .isLength({ min: 6, max: 6 }).withMessage("Mã OTP bắt buộc phải gồm 6 chữ số!"),
 
     body("newPassword")
         .notEmpty().withMessage("Mật khẩu mới không được để trống!")
@@ -118,7 +125,7 @@ export const couponAdminValidator = [
     body("code").notEmpty().withMessage("Mã giảm giá không được để trống!"),
     body("name").notEmpty().withMessage("Tên mã giảm giá không được để trống!"),
     body("discountType")
-        .isIn(["PERCENT", "FIXED", "FREE_SHIPPING"])
+        .isIn(["PERCENT", "FIXED"])
         .withMessage("Loại giảm giá không hợp lệ!"),
     body("discountValue")
         .isFloat({ min: 0 })

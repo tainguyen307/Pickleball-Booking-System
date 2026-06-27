@@ -28,63 +28,75 @@ export default function Home() {
     };
 
     return (
-        <div className="bg-background">
-            <section className="relative overflow-hidden bg-ink text-white">
+        <div className="bg-[#fafbf9]">
+            <section className="relative overflow-hidden bg-zinc-950 text-white">
+                <div className="noise-layer absolute inset-0 opacity-20" />
                 <div className="absolute inset-0">
                     <img
                         alt="Sân pickleball chuyên nghiệp"
-                        className="h-full w-full object-cover opacity-58"
+                        className="h-full w-full object-cover opacity-50"
                         src={heroImage}
                     />
-                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,20,16,0.94)_0%,rgba(11,20,16,0.76)_42%,rgba(11,20,16,0.18)_100%)]" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-transparent" />
                 </div>
 
-                <div className="app-shell relative grid min-h-[calc(100dvh-56px)] items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+                <div className="app-shell relative grid min-h-[85dvh] items-center gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
                     <div className="max-w-3xl">
-                        <p className="mb-5 inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-white/85 backdrop-blur">
-                            Đặt sân pickleball theo thời gian thực
+                        <p className="mb-4 text-xs font-bold uppercase tracking-wider text-primary">
+                            Đặt sân theo thời gian thực
                         </p>
-                        <h1 className="text-balance text-5xl font-black leading-[0.98] tracking-tight md:text-6xl lg:text-7xl">
-                            Chọn sân nhanh. Vào trận đúng giờ.
+                        <h1 className="max-w-2xl text-pretty text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-5xl lg:text-6xl">
+                            Chọn sân nhanh.<br />Vào trận đúng giờ.
                         </h1>
-                        <p className="mt-6 max-w-2xl text-base leading-8 text-white/76 md:text-lg">
+                        <p className="mt-5 max-w-xl text-pretty text-sm md:text-base text-zinc-300 leading-relaxed">
                             PickleballPro gom lịch sân, thanh toán, dụng cụ thuê kèm và đánh giá đã xác thực vào một trải nghiệm gọn gàng cho người chơi bận rộn.
                         </p>
 
-                        <form onSubmit={handleSearchSubmit} className="mt-8 max-w-2xl rounded-2xl border border-white/15 bg-white p-2 shadow-[0_30px_90px_rgba(0,0,0,0.28)]">
+                        <form onSubmit={handleSearchSubmit} className="mt-8 max-w-xl rounded-2xl bg-white p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.15)] border border-zinc-200/20">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <div className="flex min-w-0 flex-1 items-center gap-3 px-4">
-                                    <span className="material-symbols-outlined text-primary text-[22px]">location_on</span>
+                                <div className="flex min-w-0 flex-1 items-center gap-2.5 px-3">
+                                    <span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
                                     <input
                                         type="text"
-                                        placeholder="Nhập khu vực, ví dụ Thủ Đức hoặc Quận 7"
+                                        placeholder="Nhập khu vực, ví dụ Thủ Đức hoặc Quận 7..."
                                         value={searchLocation}
                                         onChange={(event) => setSearchLocation(event.target.value)}
-                                        className="min-w-0 flex-1 bg-transparent py-3 text-sm text-on-surface outline-none"
+                                        className="min-w-0 flex-1 bg-transparent py-2 text-sm text-zinc-800 placeholder-zinc-400 outline-none"
                                     />
                                 </div>
-                                <button type="submit" className="btn-primary whitespace-nowrap">
+                                <button type="submit" className="btn-primary py-2.5 px-4 whitespace-nowrap text-xs">
                                     Tìm sân
-                                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                                 </button>
                             </div>
                         </form>
+                        <div className="mt-6 flex flex-wrap gap-3 text-xs font-semibold text-zinc-400">
+                            <span>Slot realtime</span>
+                            <span className="text-zinc-600">/</span>
+                            <span>Giá công khai</span>
+                            <span className="text-zinc-600">/</span>
+                            <span>Review đã xác thực</span>
+                        </div>
                     </div>
 
                     <div className="hidden lg:block">
-                        <div className="ml-auto max-w-md rounded-2xl border border-white/16 bg-white/10 p-5 backdrop-blur-md">
-                            <div className="grid grid-cols-2 gap-3">
-                                {[
-                                    ["Slot realtime", "Không giữ lịch ảo"],
-                                    ["Thanh toán", "QR chuyển khoản"],
-                                    ["Điểm thưởng", "Sau đánh giá"],
-                                    ["Dụng cụ", "Thuê kèm khi đặt"],
-                                ].map(([title, text]) => (
-                                    <div key={title} className="rounded-2xl bg-white/12 p-4">
-                                        <p className="text-sm font-black">{title}</p>
-                                        <p className="mt-2 text-xs leading-5 text-white/68">{text}</p>
-                                    </div>
-                                ))}
+                        <div className="media-card ml-auto max-w-md p-4">
+                            <div className="overflow-hidden rounded-xl">
+                                <img
+                                    src="https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1400"
+                                    alt="Người chơi pickleball trên sân xanh"
+                                    className="h-60 w-full object-cover opacity-90 transition-transform duration-700 hover:scale-103"
+                                />
+                            </div>
+                            <div className="mt-4 grid grid-cols-[0.8fr_1.2fr] gap-3">
+                                <div className="rounded-xl bg-white/5 p-4 border border-white/5">
+                                    <p className="text-2xl font-bold tracking-tight">24/7</p>
+                                    <p className="mt-1 text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Realtime flow</p>
+                                </div>
+                                <div className="rounded-xl bg-white/5 p-4 border border-white/5">
+                                    <p className="text-xs font-bold text-zinc-200">Không giữ lịch ảo</p>
+                                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">Slot cập nhật theo booking thật, giúp bạn chọn giờ nhanh hơn.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -97,9 +109,9 @@ export default function Home() {
                         <h2 className="section-heading">Sân nổi bật</h2>
                         <p className="muted-copy mt-2 max-w-xl">Các cụm sân đang sẵn sàng đặt lịch, có ảnh thật, giá rõ ràng và thống kê tương tác.</p>
                     </div>
-                    <Link to="/courts" className="btn-secondary w-fit">
+                    <Link to="/courts" className="btn-secondary py-2.5 px-4 w-fit text-xs">
                         Xem tất cả
-                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                     </Link>
                 </div>
 
@@ -110,28 +122,34 @@ export default function Home() {
                         featuredCourts.map(court => <CourtCard key={court._id || court.id} court={court} />)
                     ) : (
                         <div className="surface-panel-flat col-span-full p-10 text-center">
-                            <h3 className="text-xl font-black text-on-surface">Chưa có sân khả dụng</h3>
+                            <h3 className="text-base font-bold text-zinc-800">Chưa có sân khả dụng</h3>
                             <p className="muted-copy mx-auto mt-2 max-w-lg">Khi admin thêm sân đang hoạt động, danh sách nổi bật sẽ tự cập nhật tại đây.</p>
                         </div>
                     )}
                 </div>
             </section>
 
-            <section className="border-y border-outline-variant/70 bg-white">
-                <div className="app-shell grid gap-8 py-14 md:grid-cols-[0.9fr_1.1fr] lg:py-16">
+            <section className="border-t border-zinc-200/50 bg-zinc-50/50">
+                <div className="app-shell grid gap-10 py-16 md:grid-cols-[0.85fr_1.15fr] lg:py-20">
                     <div>
-                        <h2 className="section-heading">Một luồng đặt sân đủ rõ cho cả người chơi lẫn vận hành.</h2>
+                        <h2 className="section-heading max-w-xl">Một luồng đặt sân đủ rõ cho cả người chơi lẫn vận hành.</h2>
+                        <p className="muted-copy mt-4 max-w-md font-medium">Thiết kế lại quanh các quyết định thật: chọn sân, chọn giờ, thêm dụng cụ, thanh toán và quay lại đánh giá.</p>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {[
-                            ["Lịch sân trực quan", "Ma trận giờ giúp người chơi thấy ngay slot trống và slot đã kín."],
-                            ["Chi phí minh bạch", "Tách tiền sân, thiết bị, phí hệ thống, coupon và điểm dùng trong checkout."],
-                            ["Đánh giá xác thực", "Chỉ booking đã hoàn tất mới được đánh giá, hạn chế bình luận ảo."],
-                            ["Admin gọn hơn", "Dashboard, đơn, thiết bị và coupon dùng cùng một ngôn ngữ giao diện."],
-                        ].map(([title, text]) => (
-                            <div key={title} className="rounded-2xl border border-outline-variant/70 bg-background p-5">
-                                <h3 className="font-black text-on-surface">{title}</h3>
-                                <p className="muted-copy mt-2">{text}</p>
+                            ["calendar_month", "Lịch sân trực quan", "Ma trận giờ giúp người chơi thấy ngay slot trống và slot đã kín.", "bg-emerald-50/20 border-emerald-500/10"],
+                            ["payments", "Chi phí minh bạch", "Tách tiền sân, thiết bị, phí hệ thống, coupon và điểm dùng trong checkout.", "bg-white"],
+                            ["verified", "Đánh giá xác thực", "Chỉ booking đã hoàn tất mới được đánh giá, hạn chế bình luận ảo.", "bg-white"],
+                            ["dashboard_customize", "Quản trị tinh gọn", "Dashboard, đơn hàng, thiết bị và coupon đồng bộ chung một ngôn ngữ thiết kế.", "bg-blue-50/10 border-blue-500/5"],
+                        ].map(([icon, title, text, bg]) => (
+                            <div key={title} className={`surface-panel-flat p-6 flex flex-col justify-between ${bg} border border-zinc-200/40`}>
+                                <div>
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-container text-primary mb-4">
+                                        <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                                    </div>
+                                    <h3 className="text-sm font-bold text-zinc-900">{title}</h3>
+                                    <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{text}</p>
+                                </div>
                             </div>
                         ))}
                     </div>

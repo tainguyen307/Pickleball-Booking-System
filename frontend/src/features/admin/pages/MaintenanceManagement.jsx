@@ -22,13 +22,85 @@ const MaintenanceFormModal = ({ onClose, onSave }) => {
         description: "",
         severity: "LOW",
     });
+    const [courts, setCourts] = useState([]);
+    const [equipments, setEquipments] = useState([]);
+    const [subCourts, setSubCourts] = useState([]);
+    const [selectedSubCourtIds, setSelectedSubCourtIds] = useState([]);
+    const [loadingTargets, setLoadingTargets] = useState(false);
+    const [loadingSubCourts, setLoadingSubCourts] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Tải danh sách cụm sân và thiết bị khi modal mở
+    useEffect(() => {
+        const fetchTargets = async () => {
+            setLoadingTargets(true);
+            try {
+                const [courtsRes, equipmentsRes] = await Promise.all([
+                    adminService.getCourts({ limit: 100 }),
+                    adminService.getEquipments({ limit: 100 })
+                ]);
+                const courtList = courtsRes.courts || [];
+                const equipList = equipmentsRes.equipments || [];
+                setCourts(courtList);
+                setEquipments(equipList);
+
+                // Chọn mặc định targetId
+                if (form.targetType === "COURT" && courtList.length > 0) {
+                    setForm(prev => ({ ...prev, targetId: courtList[0]._id }));
+                } else if (form.targetType === "EQUIPMENT" && equipList.length > 0) {
+                    setForm(prev => ({ ...prev, targetId: equipList[0]._id }));
+                }
+            } catch (err) {
+                console.error("Lỗi khi tải danh sách đối tượng bảo trì:", err);
+            } finally {
+                setLoadingTargets(false);
+            }
+        };
+        fetchTargets();
+    }, []);
+
+    // Tải danh sách sân con khi targetType là COURT và targetId thay đổi
+    useEffect(() => {
+        if (form.targetType === "COURT" && form.targetId) {
+            setLoadingSubCourts(true);
+            adminService.getSubCourts(form.targetId)
+                .then(res => {
+                    setSubCourts(res.subCourts || []);
+                    setSelectedSubCourtIds([]);
+                })
+                .catch(err => {
+                    console.error("Lỗi khi tải sân con:", err);
+                    setSubCourts([]);
+                })
+                .finally(() => {
+                    setLoadingSubCourts(false);
+                });
+        } else {
+            setSubCourts([]);
+            setSelectedSubCourtIds([]);
+        }
+    }, [form.targetType, form.targetId]);
+
+    const handleTargetTypeChange = (type) => {
+        const defaultId = type === "COURT"
+            ? courts[0]?._id || ""
+            : equipments[0]?._id || "";
+        setForm(prev => ({ ...prev, targetType: type, targetId: defaultId }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!form.targetId) {
+            alert("Vui lòng chọn đối tượng cần bảo trì!");
+            return;
+        }
         setSaving(true);
         try {
-            await adminService.createMaintenance(form);
+            const body = {
+                ...form,
+                subCourtIds: form.targetType === "COURT" ? selectedSubCourtIds : []
+            };
+            await adminService.createMaintenance(body);
             onSave();
         } catch (err) {
             alert(err?.response?.data?.message || err.message || "Có lỗi xảy ra!");
@@ -55,7 +127,7 @@ const MaintenanceFormModal = ({ onClose, onSave }) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Đối tượng *</label>
                             <select
                                 value={form.targetType}
-                                onChange={(e) => setForm({ ...form, targetType: e.target.value })}
+                                onChange={(e) => handleTargetTypeChange(e.target.value)}
                                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                             >
                                 <option value="COURT">Sân</option>
@@ -77,13 +149,77 @@ const MaintenanceFormModal = ({ onClose, onSave }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">ID Đối tượng *</label>
-                        <input
-                            type="text" required value={form.targetId} placeholder="Nhập ID sân hoặc thiết bị..."
-                            onChange={(e) => setForm({ ...form, targetId: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {form.targetType === "COURT" ? "Chọn Sân *" : "Chọn Thiết bị *"}
+                        </label>
+                        {loadingTargets ? (
+                            <p className="text-xs text-gray-400 py-2">Đang tải...</p>
+                        ) : form.targetType === "COURT" ? (
+                            courts.length === 0 ? (
+                                <p className="text-xs text-red-500 py-2">Không tìm thấy cụm sân nào.</p>
+                            ) : (
+                                <select
+                                    required
+                                    value={form.targetId}
+                                    onChange={(e) => setForm({ ...form, targetId: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                >
+                                    {courts.map(c => (
+                                        <option key={c._id} value={c._id}>
+                                            {c.name} ({c.location}) - Chủ sân: {c.vendorId?.fullName || "Chưa gán"}
+                                        </option>
+                                    ))}
+                                </select>
+                            )
+                        ) : (
+                            equipments.length === 0 ? (
+                                <p className="text-xs text-red-500 py-2">Không tìm thấy thiết bị nào.</p>
+                            ) : (
+                                <select
+                                    required
+                                    value={form.targetId}
+                                    onChange={(e) => setForm({ ...form, targetId: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                >
+                                    {equipments.map(eq => (
+                                        <option key={eq._id} value={eq._id}>{eq.name} (Tồn: {eq.quantity})</option>
+                                    ))}
+                                </select>
+                            )
+                        )}
                     </div>
+
+                    {form.targetType === "COURT" && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Chọn sân con bảo trì {loadingSubCourts ? "(Đang tải...)" : ""}
+                            </label>
+                            {subCourts.length === 0 ? (
+                                <p className="text-xs text-gray-400">Không tìm thấy sân con nào.</p>
+                            ) : (
+                                <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 max-h-40 overflow-y-auto space-y-2">
+                                    <p className="text-[10px] text-gray-400 mb-1">Để trống nếu muốn bảo trì toàn bộ cụm sân</p>
+                                    {subCourts.map(sc => (
+                                        <label key={sc._id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:text-primary">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSubCourtIds.includes(sc._id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedSubCourtIds([...selectedSubCourtIds, sc._id]);
+                                                    } else {
+                                                        setSelectedSubCourtIds(selectedSubCourtIds.filter(id => id !== sc._id));
+                                                    }
+                                                }}
+                                                className="rounded border-gray-300 text-primary focus:ring-primary"
+                                            />
+                                            <span>{sc.name} ({sc.status})</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề *</label>
@@ -222,21 +358,28 @@ export default function MaintenanceManagement() {
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Tiêu đề</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Đối tượng</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Mức độ</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Ngày tạo</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Ngày xong</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-500">Người tạo</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Trạng thái</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Hành động</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Tiêu đề</th>
+                                    <th className="text-center py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Đối tượng</th>
+                                    <th className="text-center py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Mức độ</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Ngày tạo</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Ngày xong</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Người tạo</th>
+                                    <th className="text-center py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Trạng thái</th>
+                                    <th className="text-center py-3 px-4 font-medium text-gray-500 whitespace-nowrap">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {records.map((r) => (
                                     <tr key={r._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                                         <td className="py-3 px-4">
-                                            <p className="font-medium text-gray-800">{r.title}</p>
+                                            <p className="font-medium text-gray-800">
+                                                {r.title}
+                                                {r.targetType === "EQUIPMENT" && (
+                                                    <span className="ml-2 inline-block px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] font-bold">
+                                                        Số lượng: {r.equipmentMaintenanceQty || 1}
+                                                    </span>
+                                                )}
+                                            </p>
                                             {r.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{r.description}</p>}
                                         </td>
                                         <td className="py-3 px-4 text-center">
@@ -253,7 +396,7 @@ export default function MaintenanceManagement() {
                                         <td className="py-3 px-4 text-gray-600">{formatDate(r.completedDate)}</td>
                                         <td className="py-3 px-4 text-gray-600 text-xs">{r.createdBy?.fullName || "—"}</td>
                                         <td className="py-3 px-4 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[r.status]}`}>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusColors[r.status]}`}>
                                                 {r.status}
                                             </span>
                                         </td>

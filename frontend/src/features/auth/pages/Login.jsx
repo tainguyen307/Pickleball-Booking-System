@@ -21,7 +21,7 @@ export default function Login() {
             const data = await authService.login(email, password);
             setAuth(data.user, data.accessToken);
             localStorage.setItem("refreshToken", data.refreshToken);
-            window.location.href = data.redirectUrl;
+            navigate(data.redirectUrl);
         } catch (err) {
             setErrorMsg(err.response?.data?.message || "Thông tin đăng nhập không hợp lệ.");
         }
@@ -45,7 +45,7 @@ export default function Login() {
                             </Link>
                             <div className="mt-24">
                                 <p className="stat-pill border-white/15 bg-white/10 text-white/80">Player workspace</p>
-                                <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-tight">
+                            <h1 className="mt-5 text-5xl font-bold leading-[1.18]">
                                     Lịch sân, thanh toán, điểm thưởng trong một tài khoản.
                                 </h1>
                                 <p className="mt-5 text-sm leading-7 text-white/70">
@@ -62,7 +62,7 @@ export default function Login() {
                             <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-primary text-white">
                                 <span className="material-symbols-outlined">sports_tennis</span>
                             </div>
-                            <h1 className="text-3xl font-black tracking-tight text-on-surface">Đăng nhập</h1>
+                            <h1 className="text-3xl font-bold leading-tight text-on-surface">Đăng nhập</h1>
                             <p className="muted-copy mt-2">Tiếp tục vào PickleballPro để quản lý lịch chơi của bạn.</p>
                         </div>
 
@@ -121,7 +121,7 @@ export default function Login() {
                                         const data = await authService.googleLogin(credentialResponse.credential);
                                         setAuth(data.user, data.accessToken);
                                         localStorage.setItem("refreshToken", data.refreshToken);
-                                        window.location.href = data.redirectUrl;
+                                        navigate(data.redirectUrl);
                                     } catch (err) {
                                         setErrorMsg(err.response?.data?.message || "Google authentication failed.");
                                     }

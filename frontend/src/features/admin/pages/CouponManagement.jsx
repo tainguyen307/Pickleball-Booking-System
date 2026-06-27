@@ -25,7 +25,6 @@ const statusBadge = {
 const discountTypeLabel = {
     PERCENT: { label: "Giảm %", icon: "percent", color: "text-blue-600 bg-blue-50" },
     FIXED: { label: "Giảm tiền", icon: "payments", color: "text-purple-600 bg-purple-50" },
-    FREE_SHIPPING: { label: "Freeship", icon: "local_shipping", color: "text-orange-600 bg-orange-50" },
 };
 
 function InputField({ label, icon, required, children }) {
@@ -228,7 +227,6 @@ export default function CouponManagement() {
                                 >
                                     <option value="PERCENT">Giảm theo % (phần trăm)</option>
                                     <option value="FIXED">Giảm tiền cố định</option>
-                                    <option value="FREE_SHIPPING">Miễn phí vận chuyển</option>
                                 </select>
                             </InputField>
 

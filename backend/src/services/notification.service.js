@@ -104,6 +104,36 @@ class NotificationService {
         return notifications;
     }
 
+    async createForRole({ role, title, message, type = "SYSTEM", referenceId = null, referenceType = null, sendMail = false }) {
+        const users = await User.find({ role, status: "ACTIVE" }).select("_id email fullName");
+        const notifications = [];
+
+        for (const user of users) {
+            const notification = await Notification.create({
+                userId: user._id,
+                title,
+                content: message,
+                message,
+                type,
+                referenceId,
+                referenceType,
+                recipientRole: role
+            });
+            notifications.push(notification);
+            this.emitToUser(user._id.toString(), notification);
+
+            if (sendMail && user.email) {
+                try {
+                    await mailUtil.sendGenericNotificationEmail(user.email, user.fullName, title, message);
+                } catch (error) {
+                    console.error(`[MAIL_NOTIFICATION_${role}]`, error.message);
+                }
+            }
+        }
+
+        return notifications;
+    }
+
     async getNotifications(user, query = {}) {
         const limit = Math.min(parseInt(query.limit, 10) || 20, 100);
         const filter = { userId: user.id };

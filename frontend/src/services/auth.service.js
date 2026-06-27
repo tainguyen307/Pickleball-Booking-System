@@ -24,8 +24,8 @@ export const authService = {
     forgotPassword: async (email) => {
         return await axiosClient.post("/auth/forgot-password", { email });
     },
-    resetPassword: async ({ userId, token, newPassword }) => {
-        return await axiosClient.put("/auth/reset-password", { userId, token, newPassword });
+    resetPassword: async ({ email, otpCode, newPassword }) => {
+        return await axiosClient.put("/auth/reset-password", { email, otpCode, newPassword });
     },
     // 5. Luồng đăng xuất hệ thống và xóa whitelist token trên Redis
     logout: async () => {

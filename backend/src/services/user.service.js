@@ -23,8 +23,8 @@ class UserService {
             updateData.fullName = fullName.trim();
         }
 
-        if (phone) {
-            updateData.phone = phone.trim();
+        if (phone !== undefined) {
+            updateData.phone = phone.trim() || null;
         }
 
         // 🎯 NẾU CÓ FILE ẢNH ĐƯỢC TẢI LÊN: Multer Storage đã đẩy lên mây và găm link vào file.path

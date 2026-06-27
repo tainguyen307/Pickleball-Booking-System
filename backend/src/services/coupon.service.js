@@ -87,9 +87,27 @@ class CouponService {
             discountAmount
         });
 
-        coupon.usedCount += 1;
-        await coupon.save();
+        // ✅ Fix #4: Dùng atomic $inc thay vì read-modify-write để tránh race condition
+        // Nếu 2 user validate coupon đồng thời, $inc đảm bảo usedCount tăng đúng 2 lần
+        await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
         return coupon;
+    }
+
+    /**
+     * ✅ Fix #9: Hoàn lại lượt dùng coupon khi booking bị hủy
+     * Xóa CouponUsage record và giảm usedCount atomically
+     */
+    async rollbackUsage(bookingId) {
+        const usage = await CouponUsage.findOne({ bookingId });
+        if (!usage) return; // Booking này không dùng coupon, không cần rollback
+
+        // Xóa record usage
+        await CouponUsage.deleteOne({ _id: usage._id });
+
+        // Giảm usedCount atomically (đảm bảo không âm)
+        await Coupon.findByIdAndUpdate(usage.couponId, {
+            $inc: { usedCount: -1 }
+        });
     }
 
     async createCoupon(data) {

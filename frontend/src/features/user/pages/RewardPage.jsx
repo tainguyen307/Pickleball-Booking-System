@@ -12,7 +12,6 @@ const txTypeConfig = {
 const discountTypeLabel = {
     PERCENT:      { label: "Giảm %",            icon: "percent" },
     FIXED:        { label: "Giảm tiền",          icon: "payments" },
-    FREE_SHIPPING:{ label: "Miễn phí vận chuyển", icon: "local_shipping" },
 };
 
 function fmtMoney(n) {

@@ -17,6 +17,38 @@ export const requireAdmin = (req, res, next) => {
     next();
 };
 
+export const requireVendor = (req, res, next) => {
+    if (!req.user || !["VENDOR", "ADMIN"].includes(req.user.role)) {
+        return res.status(403).json({
+            success: false,
+            message: "Bạn không có quyền truy cập khu vực dành cho nhà cung cấp!"
+        });
+    }
+    next();
+};
+
+export const requireShipper = (req, res, next) => {
+    if (!req.user || !["SHIPPER", "ADMIN"].includes(req.user.role)) {
+        return res.status(403).json({
+            success: false,
+            message: "Bạn không có quyền truy cập khu vực dành cho người giao hàng!"
+        });
+    }
+    next();
+};
+
+export const requireMaintenanceStaff = (req, res, next) => {
+    if (!req.user || !["MAINTENANCE_STAFF", "ADMIN"].includes(req.user.role)) {
+        return res.status(403).json({
+            success: false,
+            message: "Bạn không có quyền truy cập khu vực dành cho thợ bảo trì!"
+        });
+    }
+    next();
+};
+
+
+
 export const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers["authorization"];

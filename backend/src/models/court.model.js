@@ -101,6 +101,12 @@ const courtSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0
+    },
+
+    vendorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
     }
 
 }, {
@@ -115,6 +121,13 @@ courtSchema.index({ status: 1 });
 courtSchema.index({ reviewCount: -1 });
 courtSchema.index({ favoriteCount: -1 });
 courtSchema.index({ viewCount: -1 });
+courtSchema.index(
+    { vendorId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { vendorId: { $type: "objectId" } }
+    }
+);
 courtSchema.index({
     location: "text",
     name: "text"

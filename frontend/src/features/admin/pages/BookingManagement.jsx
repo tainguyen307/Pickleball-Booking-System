@@ -15,85 +15,198 @@ const paymentConfig = {
     REFUNDED: { label: "Đã hoàn",    cls: "bg-purple-100 text-purple-700" },
 };
 
-// ─── Cancel Detail Modal ──────────────────────────────────────────────────────
-function CancelDetailModal({ booking, onClose }) {
-    const wasPaid = booking.paymentStatus === "REFUNDED";
+// ─── Booking Detail Modal ──────────────────────────────────────────────────────
+function BookingDetailModal({ booking, onClose }) {
+    const status = statusConfig[booking.status] || { label: booking.status, cls: "bg-gray-100 text-gray-600" };
+    const payment = paymentConfig[booking.paymentStatus] || { label: booking.paymentStatus, cls: "bg-gray-100 text-gray-600" };
+    const formatMoney = (num) => num?.toLocaleString("vi-VN") + "đ";
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-            <div className="bg-white rounded-2xl shadow-soft w-full max-w-md overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-soft w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fadeIn flex flex-col">
                 {/* Header */}
-                <div className="flex items-center gap-3 px-6 py-4 bg-red-50 border-b border-red-100">
-                    <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-red-500 text-[20px]">cancel</span>
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="font-bold text-gray-800">Chi tiết đơn bị hủy</h3>
-                        <p className="text-xs font-mono text-gray-500">#{booking.bookingCode}</p>
-                    </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <div className="flex items-center gap-3 px-6 py-5 bg-ink text-white flex-shrink-0 relative">
+                    <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white transition-colors">
                         <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-white text-[22px]">receipt_long</span>
+                    </div>
+                    <div className="text-left">
+                        <h3 className="font-bold text-lg text-white">Chi tiết đơn đặt sân</h3>
+                        <p className="text-white/65 text-xs mt-0.5">Mã đơn: #{booking.bookingCode}</p>
+                    </div>
                 </div>
 
-                <div className="px-6 py-5 space-y-4">
-                    {/* Booking info */}
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-xs text-gray-400 mb-1">Khách hàng</p>
-                            <p className="font-semibold text-gray-800">{booking.userId?.fullName || "N/A"}</p>
-                            <p className="text-xs text-gray-500">{booking.userId?.email}</p>
-                        </div>
-                        <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-xs text-gray-400 mb-1">Sân & Thời gian</p>
-                            <p className="font-semibold text-gray-800">{booking.courtId?.name || "N/A"}</p>
-                            <p className="text-xs text-gray-500">{booking.bookingDate} · {booking.startTime}–{booking.endTime}</p>
+                {/* Body */}
+                <div className="px-6 py-5 space-y-6 overflow-y-auto custom-scrollbar text-left">
+                    {/* User info */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Khách hàng</h4>
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                            {booking.userId?.avatar ? (
+                                <img src={booking.userId.avatar} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
+                            ) : (
+                                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center text-primary font-bold">
+                                    {booking.userId?.fullName?.slice(0, 1).toUpperCase() || "U"}
+                                </div>
+                            )}
+                            <div>
+                                <p className="font-bold text-gray-800 text-sm">{booking.userId?.fullName || "N/A"}</p>
+                                <p className="text-xs text-gray-500">SĐT: {booking.userId?.phone || "N/A"} | Email: {booking.userId?.email || "N/A"}</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Cancel reason */}
-                    <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                        <p className="text-xs font-semibold text-red-500 mb-1.5 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">info</span>
-                            Lý do hủy
-                        </p>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                            {booking.cancelReason || "Không có lý do được cung cấp."}
-                        </p>
-                    </div>
-
-                    {/* Refund notice */}
-                    {wasPaid && (
-                        <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                            <div className="flex items-start gap-2.5">
-                                <span className="material-symbols-outlined text-amber-500 text-[20px] flex-shrink-0">account_balance_wallet</span>
+                    {/* Court & Time */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Thông tin sân đặt</h4>
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2.5">
+                            <div className="flex items-start gap-3">
+                                <span className="material-symbols-outlined text-primary text-[20px] mt-0.5">sports_tennis</span>
                                 <div>
-                                    <p className="text-sm font-bold text-amber-700">Hoàn tiền trong vòng 24 giờ</p>
-                                    <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
-                                        Số tiền <span className="font-black">{booking.totalPrice?.toLocaleString("vi-VN")}đ</span> sẽ được hoàn lại qua phương thức thanh toán gốc trong vòng <span className="font-bold">24 giờ làm việc</span>.
-                                    </p>
+                                    <p className="font-bold text-gray-800 text-sm">{booking.courtId?.name || "N/A"}</p>
+                                    {booking.courtId?.address && (
+                                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[14px]">location_on</span>
+                                            {booking.courtId.address}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 pt-2.5 border-t border-gray-200/60 text-xs text-gray-600">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[16px] text-gray-400">calendar_month</span>
+                                    <span>Ngày chơi: <span className="font-semibold text-gray-800">{booking.bookingDate}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[16px] text-gray-400">schedule</span>
+                                    <span>Khung giờ: <span className="font-semibold text-primary">{booking.startTime} – {booking.endTime}</span> ({booking.durationHours} giờ)</span>
                                 </div>
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {!wasPaid && booking.paymentStatus === "UNPAID" && (
-                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
-                            <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[14px]">info</span>
-                                Đơn này chưa thanh toán nên không cần hoàn tiền.
+                    {/* Status & Payment badges */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Trạng thái đơn</h4>
+                            <div className={`px-4 py-2.5 rounded-xl text-center text-xs font-bold border ${status.cls}`}>
+                                {status.label}
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Thanh toán</h4>
+                            <div className={`px-4 py-2.5 rounded-xl text-center text-xs font-bold border ${payment.cls}`}>
+                                {payment.label}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Rented Equipment */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Dụng cụ thuê kèm</h4>
+                        {booking.equipmentItems && booking.equipmentItems.length > 0 ? (
+                            <div className="space-y-2">
+                                {booking.equipmentItems.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl border border-gray-100 text-xs">
+                                        <div className="flex items-center gap-2.5">
+                                            {item.equipmentId?.image ? (
+                                                <img src={item.equipmentId.image} alt="" className="w-10 h-10 rounded-xl object-cover border border-gray-200" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                                    <span className="material-symbols-outlined text-primary text-[20px]">sports_tennis</span>
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="font-bold text-gray-800">{item.equipmentId?.name || "Thiết bị"}</p>
+                                                <p className="text-[10px] text-gray-400">
+                                                    Đơn giá: {formatMoney(item.rentalPrice)} 
+                                                    {item.equipmentId?.rentalType === "HOUR" ? "/giờ" : "/lượt"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className="font-black text-gray-900 text-sm">x{item.quantity}</span>
+                                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                                                item.returnStatus === "RETURNED" ? "bg-green-100 text-green-700 border border-green-200" :
+                                                item.returnStatus === "DAMAGED" ? "bg-red-100 text-red-700 border border-red-200" :
+                                                item.returnStatus === "LOST" ? "bg-gray-100 text-gray-700 border border-gray-200" :
+                                                "bg-amber-100 text-amber-700 border border-amber-200"
+                                            }`}>
+                                                {item.returnStatus === "RENTING" ? "Đang thuê" :
+                                                 item.returnStatus === "RETURNED" ? "Đã trả" :
+                                                 item.returnStatus === "DAMAGED" ? "Hỏng" : "Mất"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-400 italic bg-gray-50 p-3.5 rounded-2xl border border-gray-100 text-center">Không thuê thiết bị kèm theo đơn này.</p>
+                        )}
+                    </div>
+
+                    {/* Financial Summary */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Chi tiết tài chính</h4>
+                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2.5 text-xs text-gray-600">
+                            <div className="flex justify-between">
+                                <span>Tiền thuê sân:</span>
+                                <span className="font-bold text-gray-800">{formatMoney(booking.courtPrice)}</span>
+                            </div>
+                            {booking.equipmentPrice > 0 && (
+                                <div className="flex justify-between">
+                                    <span>Tiền thuê dụng cụ:</span>
+                                    <span className="font-bold text-gray-800">{formatMoney(booking.equipmentPrice)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between">
+                                <span>Phí dịch vụ hệ thống (5%):</span>
+                                <span className="font-bold text-gray-800">{formatMoney(booking.systemFee)}</span>
+                            </div>
+                            {booking.discount > 0 && (
+                                <div className="flex justify-between text-red-500 font-medium">
+                                    <span>Giảm giá mã giảm giá ({booking.couponCode}):</span>
+                                    <span className="font-bold">-{formatMoney(booking.discount)}</span>
+                                </div>
+                            )}
+                            {booking.pointDiscount > 0 && (
+                                <div className="flex justify-between text-red-500 font-medium">
+                                    <span>Giảm giá điểm tích lũy ({booking.pointsUsed} điểm):</span>
+                                    <span className="font-bold">-{formatMoney(booking.pointDiscount)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between pt-2.5 border-t border-gray-200 text-sm font-bold text-gray-900">
+                                <span>Tổng cộng thanh toán:</span>
+                                <span className="text-primary font-black text-base">{formatMoney(booking.totalPrice)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cancel Reason */}
+                    {booking.status === "CANCELLED" && booking.cancelReason && (
+                        <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                            <p className="text-xs font-semibold text-red-500 mb-1 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[15px]">info</span>
+                                Lý do hủy đơn
+                            </p>
+                            <p className="text-xs text-gray-700 leading-relaxed font-medium">
+                                {booking.cancelReason}
                             </p>
                         </div>
                     )}
                 </div>
 
-                <div className="px-6 pb-5">
+                {/* Footer */}
+                <div className="px-6 py-4 bg-gray-50 border-t flex-shrink-0">
                     <button
                         onClick={onClose}
-                        className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-all"
+                        className="w-full py-3 bg-white hover:bg-gray-100 text-gray-700 font-bold border border-gray-200 rounded-xl text-xs transition-all shadow-sm"
                     >
                         Đóng
                     </button>
@@ -406,17 +519,15 @@ export default function BookingManagement() {
                                                             <span className="material-symbols-outlined text-[18px]">cancel</span>
                                                         </button>
                                                     )}
-                                                    {/* Xem lý do hủy */}
-                                                    {b.status === "CANCELLED" && (
-                                                        <button
-                                                            onClick={() => setDetailTarget(b)}
-                                                            title="Xem lý do hủy"
-                                                            className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors text-xs font-medium"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[15px]">info</span>
-                                                            Chi tiết
-                                                        </button>
-                                                    )}
+                                                    {/* Xem chi tiết đơn đặt sân */}
+                                                    <button
+                                                        onClick={() => setDetailTarget(b)}
+                                                        title="Xem chi tiết đơn đặt sân"
+                                                        className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-primary transition-colors text-xs font-semibold"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">info</span>
+                                                        Chi tiết
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -462,7 +573,7 @@ export default function BookingManagement() {
                 />
             )}
             {detailTarget && (
-                <CancelDetailModal
+                <BookingDetailModal
                     booking={detailTarget}
                     onClose={() => setDetailTarget(null)}
                 />

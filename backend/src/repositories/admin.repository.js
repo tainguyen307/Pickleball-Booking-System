@@ -16,6 +16,7 @@ class AdminRepository {
     async findAllCourts(filter, skip, limit) {
         const [courts, total] = await Promise.all([
             Court.find(filter)
+                .populate("vendorId", "fullName email phone vendorType")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -25,7 +26,12 @@ class AdminRepository {
     }
 
     async findCourtById(id) {
-        return await Court.findById(id);
+        return await Court.findById(id)
+            .populate("vendorId", "fullName email phone vendorType");
+    }
+
+    async findSubCourtsByCourtId(courtId) {
+        return await SubCourt.find({ courtId }).select("name status").sort({ name: 1 });
     }
 
     async createCourt(data) {
@@ -72,6 +78,7 @@ class AdminRepository {
     async findAllEquipments(filter, skip, limit) {
         const [equipments, total] = await Promise.all([
             Equipment.find(filter)
+                .populate("courtId", "name")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -105,6 +112,8 @@ class AdminRepository {
         const [records, total] = await Promise.all([
             Maintenance.find(filter)
                 .populate("createdBy", "fullName email")
+                .populate("assignedStaffId", "fullName email phone")
+                .populate("workLogs.updatedBy", "fullName email phone role")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -115,7 +124,9 @@ class AdminRepository {
 
     async findMaintenanceById(id) {
         return await Maintenance.findById(id)
-            .populate("createdBy", "fullName email");
+            .populate("createdBy", "fullName email")
+            .populate("assignedStaffId", "fullName email phone")
+            .populate("workLogs.updatedBy", "fullName email phone role");
     }
 
     async createMaintenance(data) {
@@ -160,13 +171,14 @@ class AdminRepository {
      * Thống kê tổng quan Dashboard
      */
     async getDashboardCounts() {
-        const [totalCourts, totalBookings, totalUsers, totalEquipments] = await Promise.all([
+        const [totalCourts, totalBookings, totalUsers, totalVendors, totalEquipments] = await Promise.all([
             Court.countDocuments({ status: { $ne: "HIDDEN" } }),
             Booking.countDocuments(),
             User.countDocuments({ role: "USER" }),
+            User.countDocuments({ role: "VENDOR" }),
             Equipment.countDocuments()
         ]);
-        return { totalCourts, totalBookings, totalUsers, totalEquipments };
+        return { totalCourts, totalBookings, totalUsers, totalVendors, totalEquipments };
     }
 
     /**
