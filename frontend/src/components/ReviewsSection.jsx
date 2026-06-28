@@ -24,6 +24,7 @@ export default function ReviewsSection({ courtId, court }) {
     const [eligibleBookings, setEligibleBookings] = useState([]);
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState("");
+    const [reviewFiles, setReviewFiles] = useState([]);
     const [bookingId, setBookingId] = useState("");
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -60,9 +61,17 @@ export default function ReviewsSection({ courtId, court }) {
         setSubmitting(true);
         setMessage("");
         try {
-            const res = await reviewService.createReview({ courtId, bookingId, rating, comment });
+            const formData = new FormData();
+            formData.append("courtId", courtId);
+            formData.append("bookingId", bookingId);
+            formData.append("rating", rating);
+            formData.append("comment", comment);
+            reviewFiles.forEach(file => formData.append("images", file));
+
+            const res = await reviewService.createReview(formData);
             if (res.success) {
                 setComment("");
+                setReviewFiles([]);
                 setMessage(res.message || "Đánh giá thành công!");
                 await fetchData();
             }
@@ -124,6 +133,21 @@ export default function ReviewsSection({ courtId, court }) {
                         placeholder="Chia sẻ trải nghiệm thực tế của bạn về sân này..."
                         className="field-control"
                     />
+                    <div>
+                        <label className="text-sm font-bold text-on-surface">Ảnh trải nghiệm</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(event) => setReviewFiles(Array.from(event.target.files || []).slice(0, 5))}
+                            className="mt-2 w-full text-sm text-on-surface-variant file:mr-4 file:rounded-xl file:border-0 file:bg-primary-container file:px-4 file:py-2 file:text-sm file:font-bold file:text-primary hover:file:bg-primary/15"
+                        />
+                        {reviewFiles.length > 0 && (
+                            <p className="mt-1 text-xs text-on-surface-variant">
+                                Đã chọn {reviewFiles.length}/5 ảnh.
+                            </p>
+                        )}
+                    </div>
                     <div className="flex items-center justify-between gap-3">
                         <p className="text-xs font-semibold text-primary">{message}</p>
                         <button
@@ -171,6 +195,21 @@ export default function ReviewsSection({ courtId, court }) {
                             </div>
                         </div>
                         {review.comment && <p className="mt-3 text-sm leading-6 text-on-surface-variant">{review.comment}</p>}
+                        {review.images?.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {review.images.map((image) => (
+                                    <a
+                                        key={image.publicId || image.imageUrl}
+                                        href={image.imageUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="block h-20 w-20 overflow-hidden rounded-xl border border-outline-variant bg-surface-container-low"
+                                    >
+                                        <img src={image.imageUrl} alt="" className="h-full w-full object-cover" />
+                                    </a>
+                                ))}
+                            </div>
+                        )}
                     </article>
                 ))}
             </div>

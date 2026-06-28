@@ -20,8 +20,11 @@ export const userService = {
     cancelMyBooking: (bookingId, cancelReason) =>
         axiosClient.put(`/bookings/${bookingId}/cancel`, { cancelReason }),
 
-    // Lấy danh sách thiết bị/dụng cụ cho thuê
-    getEquipments: () => axiosClient.get("/bookings/equipments"),
+    // Lấy danh sách thiết bị/dụng cụ cho thuê (lọc theo courtId nếu có)
+    getEquipments: (courtId = null) => {
+        const url = courtId ? `/bookings/equipments?courtId=${courtId}` : "/bookings/equipments";
+        return axiosClient.get(url);
+    },
 
     // Tạo đơn đặt sân mới
     createBooking: (bookingData) => axiosClient.post("/bookings", bookingData),

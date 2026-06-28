@@ -196,7 +196,11 @@ export default function CourtManagement() {
     const [pagination, setPagination] = useState({});
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
     const [editingCourt, setEditingCourt] = useState(null);
+    const [maintenanceCourt, setMaintenanceCourt] = useState(null);
+    const [showSubCourtsModal, setShowSubCourtsModal] = useState(false);
+    const [selectedCourtForSubCourts, setSelectedCourtForSubCourts] = useState(null);
     const [filters, setFilters] = useState({ page: 1, type: "", status: "", search: "" });
 
     useEffect(() => {
@@ -332,6 +336,7 @@ export default function CourtManagement() {
                                     <th className="text-left py-3 px-4 font-medium text-gray-500">Khu vực</th>
                                     <th className="text-left py-3 px-4 font-medium text-gray-500">Loại</th>
                                     <th className="text-right py-3 px-4 font-medium text-gray-500">Giá/giờ</th>
+                                    <th className="text-center py-3 px-4 font-medium text-gray-500">Sân con</th>
                                     <th className="text-center py-3 px-4 font-medium text-gray-500">Trạng thái</th>
                                     <th className="text-center py-3 px-4 font-medium text-gray-500">Hành động</th>
                                 </tr>
@@ -361,28 +366,57 @@ export default function CourtManagement() {
                                             {court.pricePerHour?.toLocaleString("vi-VN")}đ
                                         </td>
                                         <td className="py-3 px-4 text-center">
+                                            <button
+                                                onClick={() => { setSelectedCourtForSubCourts(court); setShowSubCourtsModal(true); }}
+                                                className="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg font-bold text-xs transition-colors"
+                                                title="Quản lý sân nhỏ"
+                                            >
+                                                {court.subCourtsCount || 0} sân con
+                                            </button>
+                                        </td>
+                                        <td className="py-3 px-4 text-center">
                                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[court.status]}`}>
                                                 {court.status}
                                             </span>
                                         </td>
                                         <td className="py-3 px-4">
                                             <div className="flex items-center justify-center gap-1">
-                                                <button onClick={() => openEdit(court)} className="p-2 hover:bg-blue-50 rounded-lg text-blue-600" title="Sửa">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </button>
-                                                <button onClick={() => handleBlock(court._id)} className="p-2 hover:bg-yellow-50 rounded-lg text-yellow-600" title="Bảo trì / Mở">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
-                                                </button>
-                                                <button onClick={() => handleDelete(court._id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500" title="Ẩn sân">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
+                                                {court.status === "HIDDEN" ? (
+                                                    <button
+                                                        onClick={() => handleBlock(court._id)}
+                                                        className="px-2.5 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                                                        title="Khôi phục hoạt động"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[14px]">settings_backup_restore</span>
+                                                        Khôi phục
+                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={() => openEdit(court)} className="p-2 hover:bg-blue-50 rounded-lg text-blue-600" title="Sửa">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setMaintenanceCourt(court);
+                                                                setShowMaintenanceModal(true);
+                                                            }}
+                                                            className="p-2 hover:bg-yellow-50 rounded-lg text-yellow-600"
+                                                            title="Bảo trì"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            </svg>
+                                                        </button>
+                                                        <button onClick={() => handleDelete(court._id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500" title="Ẩn sân">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -426,6 +460,455 @@ export default function CourtManagement() {
                     onSave={handleSaved}
                 />
             )}
+
+            {showMaintenanceModal && (
+                <CourtMaintenanceModal
+                    court={maintenanceCourt}
+                    onClose={() => { setShowMaintenanceModal(false); setMaintenanceCourt(null); }}
+                    onSave={() => { setShowMaintenanceModal(false); setMaintenanceCourt(null); fetchCourts(); }}
+                />
+            )}
+
+            {showSubCourtsModal && selectedCourtForSubCourts && (
+                <SubCourtsManagementModal
+                    court={selectedCourtForSubCourts}
+                    service={adminService}
+                    onClose={() => { setShowSubCourtsModal(false); setSelectedCourtForSubCourts(null); }}
+                    onSave={fetchCourts}
+                />
+            )}
         </div>
     );
 }
+
+const CourtMaintenanceModal = ({ court, onClose, onSave }) => {
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [severity, setSeverity] = useState("LOW");
+    const [files, setFiles] = useState([]);
+    const [saving, setSaving] = useState(false);
+
+    const [subCourts, setSubCourts] = useState([]);
+    const [selectedSubCourtIds, setSelectedSubCourtIds] = useState([]);
+    const [loadingSubCourts, setLoadingSubCourts] = useState(false);
+
+    useEffect(() => {
+        const fetchSubCourts = async () => {
+            try {
+                setLoadingSubCourts(true);
+                const res = await adminService.getSubCourts(court._id);
+                setSubCourts(res.subCourts || []);
+                if (res.subCourts && res.subCourts.length > 0) {
+                    setSelectedSubCourtIds(res.subCourts.map(s => s._id));
+                }
+            } catch (err) {
+                console.error("Lỗi khi tải sân nhỏ:", err);
+            } finally {
+                setLoadingSubCourts(false);
+            }
+        };
+        fetchSubCourts();
+    }, [court._id]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (subCourts.length > 0 && selectedSubCourtIds.length === 0) {
+            alert("Vui lòng chọn ít nhất một sân nhỏ cần bảo trì!");
+            return;
+        }
+        setSaving(true);
+        try {
+            const formData = new FormData();
+            formData.append("targetType", "COURT");
+            formData.append("targetId", court._id);
+            formData.append("title", title);
+            formData.append("description", description);
+            formData.append("severity", severity);
+            if (selectedSubCourtIds.length > 0) {
+                formData.append("subCourtIds", selectedSubCourtIds.join(","));
+            }
+            files.forEach(file => formData.append("images", file));
+            await adminService.createMaintenance(formData);
+            alert("Tạo yêu cầu bảo trì cụm sân thành công! Trạng thái các sân nhỏ đã chọn đã chuyển sang BẢO TRÌ.");
+            onSave();
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message || "Có lỗi xảy ra!");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-xl border">
+                <div className="flex items-center justify-between p-6 border-b">
+                    <h2 className="text-lg font-bold text-gray-800">Yêu cầu bảo trì cụm sân</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cụm sân</label>
+                        <input
+                            type="text" disabled value={court.name}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chủ sân tiếp nhận</label>
+                        <input
+                            type="text"
+                            disabled
+                            value={court.vendorId?.fullName ? `${court.vendorId.fullName} (${court.vendorId.email})` : "Chưa gán chủ sân"}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-500"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chọn sân nhỏ cần bảo trì *</label>
+                        {loadingSubCourts ? (
+                            <p className="text-xs text-gray-400">Đang tải danh sách sân nhỏ...</p>
+                        ) : subCourts.length === 0 ? (
+                            <p className="text-xs text-red-500">Cụm sân này chưa cấu hình sân nhỏ!</p>
+                        ) : (
+                            <div className="space-y-2 max-h-40 overflow-y-auto p-3 border border-gray-100 rounded-xl bg-gray-50/50">
+                                <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer pb-2 border-b">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedSubCourtIds.length === subCourts.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedSubCourtIds(subCourts.map(s => s._id));
+                                            } else {
+                                                setSelectedSubCourtIds([]);
+                                            }
+                                        }}
+                                        className="rounded text-primary focus:ring-primary/20"
+                                    />
+                                    <span>Chọn tất cả sân nhỏ ({subCourts.length})</span>
+                                </label>
+                                {subCourts.map((sub) => (
+                                    <label key={sub._id} className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer py-0.5">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedSubCourtIds.includes(sub._id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedSubCourtIds([...selectedSubCourtIds, sub._id]);
+                                                } else {
+                                                    setSelectedSubCourtIds(selectedSubCourtIds.filter(id => id !== sub._id));
+                                                }
+                                            }}
+                                            className="rounded text-primary focus:ring-primary/20"
+                                        />
+                                        <span>{sub.name} {sub.status === "MAINTENANCE" && <span className="text-[10px] text-amber-600 font-bold">(Đang bảo trì)</span>}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ bảo trì</label>
+                        <select
+                            value={severity}
+                            onChange={(e) => setSeverity(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        >
+                            <option value="LOW">Thấp (Low)</option>
+                            <option value="MEDIUM">Trung bình (Medium)</option>
+                            <option value="HIGH">Cao (High)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề yêu cầu *</label>
+                        <input
+                            type="text" required value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                            placeholder="Mô tả ngắn hư hỏng..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
+                        <textarea
+                            rows={3} value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+                            placeholder="Chi tiết về hỏng hóc..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ảnh hiện trạng</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                        />
+                        <p className="mt-1 text-xs text-gray-400">Có thể chọn tối đa 5 ảnh minh chứng.</p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 font-medium">
+                            Hủy
+                        </button>
+                        <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 font-medium disabled:opacity-50">
+                            {saving ? "Đang gửi..." : "Tạo yêu cầu"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const SubCourtsManagementModal = ({ court, onClose, onSave, service }) => {
+    const [subCourts, setSubCourts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [newName, setNewName] = useState("");
+    const [adding, setAdding] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [editingName, setEditingName] = useState("");
+    const [updatingId, setUpdatingId] = useState(null);
+
+    const fetchSubCourts = async () => {
+        try {
+            setLoading(true);
+            const res = await service.getSubCourts(court._id);
+            setSubCourts(res.subCourts || []);
+        } catch (err) {
+            console.error("Lỗi khi tải danh sách sân nhỏ:", err);
+            alert(err?.response?.data?.message || err.message || "Không thể tải danh sách sân nhỏ.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (court?._id) {
+            fetchSubCourts();
+        }
+    }, [court?._id]);
+
+    const handleAdd = async (e) => {
+        e.preventDefault();
+        if (!newName.trim()) return;
+        setAdding(true);
+        try {
+            await service.createSubCourt(court._id, { name: newName.trim() });
+            setNewName("");
+            fetchSubCourts();
+            if (onSave) onSave();
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message || "Không thể thêm sân nhỏ.");
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    const handleUpdateStatus = async (subCourtId, currentStatus) => {
+        const nextStatus = currentStatus === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
+        setUpdatingId(subCourtId);
+        try {
+            await service.updateSubCourt(subCourtId, { status: nextStatus });
+            fetchSubCourts();
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message || "Không thể cập nhật trạng thái.");
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleUpdateName = async (subCourtId) => {
+        if (!editingName.trim()) return;
+        setUpdatingId(subCourtId);
+        try {
+            await service.updateSubCourt(subCourtId, { name: editingName.trim() });
+            setEditingId(null);
+            setEditingName("");
+            fetchSubCourts();
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message || "Không thể đổi tên sân nhỏ.");
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleDelete = async (subCourtId) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa sân nhỏ này?")) return;
+        setUpdatingId(subCourtId);
+        try {
+            await service.deleteSubCourt(subCourtId);
+            fetchSubCourts();
+            if (onSave) onSave();
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message || "Không thể xóa sân nhỏ.");
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border overflow-hidden">
+                <div className="flex items-center justify-between p-6 border-b">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Quản lý Sân con (SubCourts)</h2>
+                        <p className="text-sm text-gray-500 mt-1">Cụm sân: <span className="font-semibold text-gray-700">{court.name}</span></p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    <form onSubmit={handleAdd} className="flex gap-2">
+                        <input
+                            type="text"
+                            required
+                            placeholder="Nhập tên sân nhỏ mới (VD: Sân số 3)..."
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            disabled={adding}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        />
+                        <button
+                            type="submit"
+                            disabled={adding || !newName.trim()}
+                            className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                        >
+                            {adding ? "Thêm..." : "Thêm sân con"}
+                        </button>
+                    </form>
+
+                    <div className="max-h-[40vh] overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+                            </div>
+                        ) : subCourts.length === 0 ? (
+                            <p className="text-center py-8 text-sm text-gray-400">Cụm sân này chưa có sân con nào.</p>
+                        ) : (
+                            subCourts.map((sc) => (
+                                <div key={sc._id} className="p-3 flex items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        {editingId === sc._id ? (
+                                            <div className="flex gap-1.5 items-center">
+                                                <input
+                                                    type="text"
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    className="px-2.5 py-1 border border-gray-200 rounded-lg text-sm focus:border-primary outline-none"
+                                                    autoFocus
+                                                />
+                                                <button
+                                                    onClick={() => handleUpdateName(sc._id)}
+                                                    disabled={updatingId === sc._id}
+                                                    className="p-1.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                                                    title="Lưu"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => { setEditingId(null); setEditingName(""); }}
+                                                    className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                                                    title="Hủy"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-medium truncate ${sc.status === "HIDDEN" ? "text-gray-400 line-through" : "text-gray-800"}`}>
+                                                    {sc.name}
+                                                </span>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                                    sc.status === "AVAILABLE" ? "bg-green-50 text-green-700" :
+                                                    sc.status === "MAINTENANCE" ? "bg-yellow-50 text-yellow-700" : "bg-gray-100 text-gray-500"
+                                                }`}>
+                                                    {sc.status === "AVAILABLE" ? "AVAILABLE" : sc.status === "MAINTENANCE" ? "MAINTENANCE" : "HIDDEN"}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-1 items-center shrink-0">
+                                        {sc.status === "HIDDEN" ? (
+                                            <button
+                                                onClick={() => handleUpdateStatus(sc._id, "HIDDEN")}
+                                                disabled={updatingId !== null}
+                                                className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-colors animate-pulse"
+                                                title="Khôi phục hoạt động"
+                                            >
+                                                Khôi phục
+                                            </button>
+                                        ) : (
+                                            <>
+                                                {editingId !== sc._id && (
+                                                    <button
+                                                        onClick={() => { setEditingId(sc._id); setEditingName(sc.name); }}
+                                                        disabled={updatingId !== null}
+                                                        className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-700"
+                                                        title="Sửa tên"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleUpdateStatus(sc._id, sc.status)}
+                                                    disabled={updatingId !== null}
+                                                    className={`p-1.5 rounded transition-colors ${
+                                                        sc.status === "AVAILABLE"
+                                                            ? "hover:bg-yellow-50 text-yellow-600"
+                                                            : "hover:bg-green-50 text-green-600"
+                                                    }`}
+                                                    title={sc.status === "AVAILABLE" ? "Chuyển sang bảo trì" : "Mở khóa sân"}
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(sc._id)}
+                                                    disabled={updatingId !== null}
+                                                    className="p-1.5 hover:bg-red-50 text-red-500 rounded"
+                                                    title="Xóa sân"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="p-6 bg-gray-50 border-t flex justify-end">
+                    <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-medium text-sm transition-colors">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

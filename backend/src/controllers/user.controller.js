@@ -27,8 +27,6 @@ class UserController {
     async updateProfile(req, res) {
         try {
             const userId = req.user.id;
-            console.log("updateProfile - req.file:", req.file);
-            console.log("updateProfile - req.body:", req.body);
             // req.file chứa ảnh do middleware uploadCloud xử lý
             const result = await userService.updateUserProfile(userId, req.body, req.file);
 

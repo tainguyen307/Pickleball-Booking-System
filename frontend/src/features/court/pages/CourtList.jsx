@@ -29,43 +29,52 @@ export default function CourtList() {
 
     // Đồng bộ state cục bộ khi URL thay đổi từ bên ngoài
     useEffect(() => {
-        const newSearch = searchParams.get("search") || "";
-        const newLocation = searchParams.get("location") || "";
-        const newMinPrice = searchParams.get("minPrice") || "";
-        const newMaxPrice = searchParams.get("maxPrice") || "";
+        const timer = window.setTimeout(() => {
+            const newSearch = searchParams.get("search") || "";
+            const newLocation = searchParams.get("location") || "";
+            const newMinPrice = searchParams.get("minPrice") || "";
+            const newMaxPrice = searchParams.get("maxPrice") || "";
 
-        setLocalSearch(newSearch);
-        setLocalLocation(newLocation);
-        setLocalMinPrice(newMinPrice);
-        setLocalMaxPrice(newMaxPrice);
+            setLocalSearch(newSearch);
+            setLocalLocation(newLocation);
+            setLocalMinPrice(newMinPrice);
+            setLocalMaxPrice(newMaxPrice);
 
-        setAppliedSearch(newSearch);
-        setAppliedLocation(newLocation);
-        setAppliedMinPrice(newMinPrice);
-        setAppliedMaxPrice(newMaxPrice);
+            setAppliedSearch(newSearch);
+            setAppliedLocation(newLocation);
+            setAppliedMinPrice(newMinPrice);
+            setAppliedMaxPrice(newMaxPrice);
+        }, 0);
+
+        return () => window.clearTimeout(timer);
     }, [searchParams]);
 
     // Gọi API khi URL thay đổi
     useEffect(() => {
         let isMounted = true;
-        setIsLoading(true);
+        const timer = window.setTimeout(() => {
+            setIsLoading(true);
 
-        const params = Object.fromEntries([...searchParams]);
-        if (!params.page) params.page = "1";
+            const params = Object.fromEntries([...searchParams]);
+            if (!params.page) params.page = "1";
 
-        courtService.getCourts(params)
-            .then(res => {
-                if (res.success && isMounted) {
-                    setCourts(res.courts);
-                    setPagination(res.pagination);
-                }
-            })
-            .catch(err => console.error("Lỗi fetch danh sách sân:", err))
-            .finally(() => {
-                if (isMounted) setIsLoading(false);
-            });
+            courtService.getCourts(params)
+                .then(res => {
+                    if (res.success && isMounted) {
+                        setCourts(res.courts);
+                        setPagination(res.pagination);
+                    }
+                })
+                .catch(err => console.error("Lỗi fetch danh sách sân:", err))
+                .finally(() => {
+                    if (isMounted) setIsLoading(false);
+                });
+        }, 0);
 
-        return () => { isMounted = false; };
+        return () => {
+            isMounted = false;
+            window.clearTimeout(timer);
+        };
     }, [searchParams]);
 
     // Cập nhật filter dạng click (type, page) - Áp dụng ngay
@@ -131,6 +140,7 @@ export default function CourtList() {
         if (filterName === "search") setLocalSearch("");
         if (filterName === "location") setLocalLocation("");
         if (filterName === "minPrice") setLocalMinPrice("");
+
         if (filterName === "maxPrice") setLocalMaxPrice("");
     };
 
@@ -140,18 +150,17 @@ export default function CourtList() {
         <div className="min-h-screen bg-background">
             <div className="app-shell py-8 lg:py-10">
 
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div className="mb-8 overflow-hidden rounded-2xl border border-zinc-200/50 bg-white p-5 shadow-sm md:p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h1 className="section-heading">
                             Khám phá sân bóng
                         </h1>
-                        <p className="muted-copy mt-2">
-                            {pagination.totalItems || 0} sân bóng đang chờ bạn
+                        <p className="muted-copy mt-2 max-w-xl">
+                            {pagination.totalItems || 0} sân đang sẵn sàng đặt lịch, lọc theo khu vực, loại sân và mức giá.
                         </p>
                     </div>
 
-                    {/* Mobile filter button */}
                     <button
                         onClick={() => setIsFilterOpen(!isFilterOpen)}
                         className="btn-primary lg:hidden"
@@ -164,69 +173,65 @@ export default function CourtList() {
                             </span>
                         )}
                     </button>
+                    </div>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Sidebar Filter - TO HƠN */}
                     <aside className={`
-                        lg:w-96 lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)] lg:overflow-y-auto
+                        lg:w-80 lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)] lg:overflow-y-auto
                         ${isFilterOpen ? "fixed inset-0 z-50 bg-black/50 lg:relative lg:bg-transparent" : "hidden lg:block"}
                     `}>
                         <form onSubmit={handleApplyFilters} className={`
-                            surface-panel-flat
+                            surface-panel
                             ${isFilterOpen ? "absolute inset-x-4 top-20 bottom-4 overflow-y-auto" : ""}
                             lg:relative lg:inset-auto lg:overflow-visible
                         `}>
-                            {/* Filter header */}
-                            <div className="flex items-center justify-between border-b border-outline-variant/60 p-5">
+                            <div className="flex items-center justify-between border-b border-zinc-100 p-5">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary text-[22px]">tune</span>
-                                    <h2 className="text-lg font-black text-on-surface">Bộ lọc sân</h2>
+                                    <span className="material-symbols-outlined text-[20px] text-primary">tune</span>
+                                    <h2 className="text-sm font-bold text-zinc-800">Bộ lọc sân</h2>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setIsFilterOpen(false)}
-                                    className="lg:hidden p-2 rounded-full hover:bg-surface-container transition-colors"
+                                    className="lg:hidden p-2 rounded-full hover:bg-zinc-50 transition-colors"
                                 >
                                     <span className="material-symbols-outlined text-[20px]">close</span>
                                 </button>
                             </div>
 
-                            <div className="p-5 space-y-6">
-                                {/* Ô tìm kiếm theo tên */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-on-surface flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[18px]">search</span>
+                            <div className="p-5 space-y-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 flex items-center gap-1 uppercase tracking-wider">
+                                        <span className="material-symbols-outlined text-[16px]">search</span>
                                         Tìm kiếm
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="Tên câu lạc bộ, thành phố, mã bưu điện..."
+                                        placeholder="Tên câu lạc bộ..."
                                         value={localSearch}
                                         onChange={(e) => setLocalSearch(e.target.value)}
                                         className="field-control"
                                     />
                                 </div>
 
-                                {/* Khu vực */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-on-surface flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[18px]">location_on</span>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 flex items-center gap-1 uppercase tracking-wider">
+                                        <span className="material-symbols-outlined text-[16px]">location_on</span>
                                         Khu vực / Quận huyện
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="Ví dụ: Thủ Đức, Quận 7, Bình Thạnh..."
+                                        placeholder="Ví dụ: Thủ Đức, Quận 7..."
                                         value={localLocation}
                                         onChange={(e) => setLocalLocation(e.target.value)}
                                         className="field-control"
                                     />
                                 </div>
 
-                                {/* Loại sân - NÚT TO HƠN */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-on-surface">Loại sân</label>
-                                    <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Loại sân</label>
+                                    <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { value: "", label: "Tất cả", icon: "grid_view" },
                                             { value: "INDOOR", label: "Trong nhà", icon: "home" },
@@ -236,60 +241,58 @@ export default function CourtList() {
                                                 key={t.value}
                                                 type="button"
                                                 onClick={() => updateFilter("type", t.value)}
-                                                className={`flex items-center justify-center gap-2 rounded-xl px-2 py-3.5 text-sm font-bold transition-all whitespace-nowrap ${
+                                                className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2.5 text-[10px] font-bold transition-all ${
                                                     type === t.value
-                                                        ? "bg-primary text-white shadow-md"
-                                                        : "bg-white border border-outline-variant text-on-surface-variant hover:border-primary/35 hover:text-primary"
+                                                        ? "bg-primary text-white shadow-sm"
+                                                        : "border border-zinc-200 bg-white text-zinc-500 hover:border-primary/45 hover:text-primary"
                                                 }`}
                                             >
-                                                <span className="material-symbols-outlined text-[20px]">{t.icon}</span>
+                                                <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
                                                 {t.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Khoảng giá */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-on-surface flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[18px]">attach_money</span>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-zinc-500 flex items-center gap-1 uppercase tracking-wider">
+                                        <span className="material-symbols-outlined text-[16px]">attach_money</span>
                                         Giá mỗi giờ
                                     </label>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
                                         <div className="flex-1">
                                             <input
                                                 type="number"
                                                 placeholder="Từ (đ)"
                                                 value={localMinPrice}
                                                 onChange={(e) => setLocalMinPrice(e.target.value)}
-                                                className="field-control px-3"
+                                                className="field-control px-2.5 py-2"
                                             />
                                         </div>
-                                        <span className="text-outline text-sm">—</span>
+                                        <span className="text-xs font-bold text-zinc-400">đến</span>
                                         <div className="flex-1">
                                             <input
                                                 type="number"
                                                 placeholder="Đến (đ)"
                                                 value={localMaxPrice}
                                                 onChange={(e) => setLocalMaxPrice(e.target.value)}
-                                                className="field-control px-3"
+                                                className="field-control px-2.5 py-2"
                                             />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Action buttons */}
-                                <div className="space-y-3 pt-2">
+                                <div className="space-y-2 pt-2">
                                     <button
                                         type="submit"
-                                        className="btn-primary w-full"
+                                        className="btn-primary w-full py-2.5 text-xs"
                                     >
                                         Áp dụng bộ lọc
                                     </button>
                                     <button
                                         type="button"
                                         onClick={handleResetAll}
-                                        className="btn-secondary w-full"
+                                        className="btn-secondary w-full py-2.5 text-xs"
                                     >
                                         Xóa tất cả
                                     </button>
@@ -298,14 +301,12 @@ export default function CourtList() {
                         </form>
                     </aside>
 
-                    {/* Main Content */}
                     <main className="flex-1 space-y-6">
-                        {/* Active filters display - CHỈ HIỂN THỊ SAU KHI ÁP DỤNG */}
                         {hasActiveFilters && (
-                            <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-outline-variant/30">
-                                <span className="text-sm text-on-surface-variant">Đang lọc:</span>
+                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200/50 bg-zinc-50/50 p-2.5">
+                                <span className="text-xs font-bold text-zinc-500">Đang lọc:</span>
                                 {appliedSearch && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                                    <span className="inline-flex items-center gap-1 rounded-lg bg-primary-container px-2 py-1 text-xs font-bold text-on-primary-container">
                                         {appliedSearch.length > 20 ? appliedSearch.slice(0, 20) + "..." : appliedSearch}
                                         <button onClick={() => removeFilter("search")} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
@@ -313,7 +314,7 @@ export default function CourtList() {
                                     </span>
                                 )}
                                 {appliedLocation && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                                    <span className="inline-flex items-center gap-1 rounded-lg bg-primary-container px-2 py-1 text-xs font-bold text-on-primary-container">
                                         {appliedLocation}
                                         <button onClick={() => removeFilter("location")} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
@@ -321,7 +322,7 @@ export default function CourtList() {
                                     </span>
                                 )}
                                 {type && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                                    <span className="inline-flex items-center gap-1 rounded-lg bg-primary-container px-2 py-1 text-xs font-bold text-on-primary-container">
                                         {type === "INDOOR" ? "Trong nhà" : "Ngoài trời"}
                                         <button onClick={() => updateFilter("type", "")} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
@@ -329,7 +330,7 @@ export default function CourtList() {
                                     </span>
                                 )}
                                 {(appliedMinPrice || appliedMaxPrice) && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                                    <span className="inline-flex items-center gap-1 rounded-lg bg-primary-container px-2 py-1 text-xs font-bold text-on-primary-container">
                                         {appliedMinPrice || "0"}đ - {appliedMaxPrice || "∞"}đ
                                         <button onClick={() => { removeFilter("minPrice"); removeFilter("maxPrice"); }} className="hover:bg-primary/20 rounded-full p-0.5">
                                             <span className="material-symbols-outlined text-[12px]">close</span>
@@ -338,36 +339,34 @@ export default function CourtList() {
                                 )}
                                 <button
                                     onClick={handleResetAll}
-                                    className="text-xs text-primary hover:underline ml-2"
+                                    className="ml-2 text-xs font-bold text-primary hover:underline"
                                 >
                                     Xóa tất cả
                                 </button>
                             </div>
                         )}
 
-                        {/* Results header */}
                         <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-on-background">
+                            <h2 className="text-lg font-bold tracking-tight text-zinc-900">
                                 Sân khả dụng
-                                <span className="text-outline text-sm font-medium ml-2">({pagination.totalItems || 0} kết quả)</span>
+                                <span className="ml-1.5 text-xs font-semibold text-zinc-400">({pagination.totalItems || 0} kết quả)</span>
                             </h2>
                         </div>
 
-                        {/* Courts Grid */}
                         {isLoading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                                 {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
                             </div>
                         ) : courts.length === 0 ? (
-                            <div className="surface-panel-flat py-16 text-center">
-                                <div className="w-20 h-20 mx-auto bg-surface-container-high rounded-full flex items-center justify-center mb-4">
-                                    <span className="material-symbols-outlined text-4xl text-outline">search_off</span>
+                            <div className="surface-panel-flat px-6 py-16 text-center">
+                                <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-zinc-50 border border-zinc-100">
+                                    <span className="material-symbols-outlined text-2xl text-zinc-400">search_off</span>
                                 </div>
-                                <h3 className="text-xl font-black text-on-surface mb-2">Không tìm thấy sân bóng</h3>
-                                <p className="text-on-surface-variant mb-6">Hãy thử điều chỉnh bộ lọc hoặc tìm kiếm khác nhé!</p>
+                                <h3 className="mb-1.5 text-base font-bold text-zinc-800">Không tìm thấy sân bóng</h3>
+                                <p className="mx-auto mb-6 max-w-sm text-xs text-zinc-400 leading-relaxed">Thử nới khoảng giá, bỏ loại sân hoặc đổi khu vực tìm kiếm.</p>
                                 <button
                                     onClick={handleResetAll}
-                                    className="btn-primary"
+                                    className="btn-primary py-2.5 px-4 text-xs"
                                 >
                                     Xóa tất cả bộ lọc
                                 </button>
@@ -380,15 +379,14 @@ export default function CourtList() {
                                     ))}
                                 </div>
 
-                                {/* Pagination */}
                                 {pagination.totalPages > 1 && (
-                                    <div className="pt-8 flex justify-center items-center gap-1.5">
+                                    <div className="pt-8 flex justify-center items-center gap-1">
                                         <button
                                             disabled={parseInt(page) === 1}
                                             onClick={() => updateFilter("page", parseInt(page) - 1)}
-                                            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                            className="w-9 h-9 rounded-full border border-zinc-200 flex items-center justify-center text-zinc-500 hover:border-primary hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                                            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                                         </button>
 
                                         {[...Array(Math.min(pagination.totalPages, 5))].map((_, idx) => {
@@ -409,17 +407,17 @@ export default function CourtList() {
                                             }
 
                                             if (idx === 3 && total > 5 && current < total - 2 && current > 3) {
-                                                return <span key="ellipsis" className="px-2 text-on-surface-variant">...</span>;
+                                                return <span key="ellipsis" className="px-2 text-zinc-400">...</span>;
                                             }
 
                                             return (
                                                 <button
                                                     key={pNum}
                                                     onClick={() => updateFilter("page", pNum)}
-                                                    className={`w-10 h-10 rounded-full font-medium text-sm transition-all ${
+                                                    className={`w-9 h-9 rounded-full font-bold text-xs transition-all ${
                                                         current === pNum
                                                             ? "bg-primary text-white shadow-sm"
-                                                            : "text-on-surface-variant hover:bg-surface-container"
+                                                            : "text-zinc-600 hover:bg-zinc-100"
                                                     }`}
                                                 >
                                                     {pNum}
@@ -430,9 +428,9 @@ export default function CourtList() {
                                         <button
                                             disabled={parseInt(page) === pagination.totalPages}
                                             onClick={() => updateFilter("page", parseInt(page) + 1)}
-                                            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                            className="w-9 h-9 rounded-full border border-zinc-200 flex items-center justify-center text-zinc-500 hover:border-primary hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                                            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                                         </button>
                                     </div>
                                 )}

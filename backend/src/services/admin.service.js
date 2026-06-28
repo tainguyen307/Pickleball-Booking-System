@@ -11,6 +11,15 @@ import RevenueLog from "../models/revenueLog.model.js";
 import revenueService from "./revenue.service.js";
 import notificationService from "./notification.service.js";
 import pointsService from "./points.service.js";
+import User from "../models/user.model.js";
+import uploadService from "./upload.service.js";
+import systemSettingService from "./systemSetting.service.js";
+import ImportOrder from "../models/importOrder.model.js";
+import Delivery from "../models/delivery.model.js";
+import { generateSlotsForNewSubCourt } from "../utils/slotScheduler.js";
+import bookingService from "./booking.service.js";
+
+
 
 class AdminService {
     // ======================== COURTS ========================
@@ -44,8 +53,17 @@ class AdminService {
 
         const { courts, total } = await adminRepository.findAllCourts(filter, skip, parsedLimit);
 
+        const courtsWithDetails = [];
+        for (const court of courts) {
+            const subCourtsCount = await SubCourt.countDocuments({ courtId: court._id, status: { $ne: "HIDDEN" } });
+            courtsWithDetails.push({
+                ...court.toObject(),
+                subCourtsCount
+            });
+        }
+
         return {
-            courts,
+            courts: courtsWithDetails,
             pagination: {
                 totalItems: total,
                 currentPage: parsedPage,
@@ -170,8 +188,15 @@ class AdminService {
         const court = await adminRepository.findCourtById(courtId);
         if (!court) throw new Error("Cụm sân không tồn tại!");
 
-        const newStatus = court.status === "MAINTENANCE" ? "AVAILABLE" : "MAINTENANCE";
+        const newStatus = court.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
         const updatedCourt = await adminRepository.updateCourt(courtId, { status: newStatus });
+
+        if (newStatus === "AVAILABLE") {
+            const subCourts = await SubCourt.find({ courtId, status: "AVAILABLE" });
+            for (const sub of subCourts) {
+                await generateSlotsForNewSubCourt(courtId, sub);
+            }
+        }
 
         return {
             message: newStatus === "MAINTENANCE"
@@ -186,6 +211,7 @@ class AdminService {
      * Lấy danh sách tất cả booking (Admin view)
      */
     async getAllBookings(queryParams) {
+        await bookingService.autoCompletePastBookings();
         const { status, courtId, startDate, endDate, search, limit = 10, page = 1 } = queryParams;
 
         const parsedLimit = parseInt(limit);
@@ -208,8 +234,31 @@ class AdminService {
 
         const { bookings, total } = await adminRepository.findAllBookings(filter, skip, parsedLimit);
 
+        let enrichedBookings = bookings;
+        if (bookings && bookings.length > 0) {
+            const bookingIds = bookings.map(b => b._id);
+            const equipmentRentals = await BookingEquipment.find({ bookingId: { $in: bookingIds } })
+                .populate("equipmentId", "name type image rentalType rentalPrice");
+            
+            enrichedBookings = bookings.map(b => {
+                const bObj = b.toObject();
+                const items = equipmentRentals
+                    .filter(eq => eq.bookingId.toString() === b._id.toString())
+                    .map(eq => ({
+                        equipmentId: eq.equipmentId,
+                        quantity: eq.quantity,
+                        rentalPrice: eq.rentalPrice,
+                        subtotal: eq.subtotal,
+                        returnStatus: eq.returnStatus
+                    }));
+                bObj.equipmentItems = items;
+                bObj.rentedEquipments = items;
+                return bObj;
+            });
+        }
+
         return {
-            bookings,
+            bookings: enrichedBookings,
             pagination: {
                 totalItems: total,
                 currentPage: parsedPage,
@@ -291,9 +340,6 @@ class AdminService {
         if (booking.equipmentPrice > 0) {
             const rentedItems = await BookingEquipment.find({ bookingId: booking._id });
             for (const item of rentedItems) {
-                await Equipment.findByIdAndUpdate(item.equipmentId, {
-                    $inc: { availableQuantity: item.quantity }
-                });
                 item.returnStatus = "RETURNED";
                 await item.save();
             }
@@ -382,30 +428,56 @@ class AdminService {
     }
 
     /**
-     * Tạo thiết bị mới (Nhập kho)
+     * Tạo thiết bị mới (Đăng ký hồ sơ & gửi yêu cầu nhập kho sang Vendor)
      */
-    async createEquipment(data) {
-        const { name, type, description, quantity, rentalType, rentalPrice, image } = data;
+    async createEquipment(adminId, data) {
+        const { name, type, description, quantity, rentalType, rentalPrice, image, vendorId, courtId } = data;
 
-        if (!name || !type || !quantity || !rentalType || !rentalPrice) {
-            throw new Error("Vui lòng điền đầy đủ thông tin thiết bị!");
+        if (!name || !type || !quantity || !rentalType || !rentalPrice || !vendorId) {
+            throw new Error("Vui lòng điền đầy đủ thông tin thiết bị và chọn nhà cung cấp!");
+        }
+
+        const qty = parseInt(quantity);
+        if (isNaN(qty) || qty <= 0) {
+            throw new Error("Số lượng nhập ban đầu phải lớn hơn 0!");
         }
 
         const newEquipment = await adminRepository.createEquipment({
             name: name.trim(),
             type: type.toUpperCase(),
             description: description?.trim() || "",
-            quantity: parseInt(quantity),
-            availableQuantity: parseInt(quantity),
+            quantity: 0, // Bắt đầu bằng 0, chỉ tăng lên khi đơn nhập kho hoàn thành
+            availableQuantity: 0,
             rentalType: rentalType.toUpperCase(),
             rentalPrice: parseInt(rentalPrice),
             image: image || "",
-            status: "AVAILABLE"
+            status: "AVAILABLE",
+            vendorId: vendorId,
+            courtId: courtId || null
+        });
+
+        // Tạo đơn yêu cầu nhập kho PENDING gửi đến Vendor tương ứng
+        const newOrder = await ImportOrder.create({
+            equipmentId: newEquipment._id,
+            vendorId,
+            adminId,
+            quantity: qty,
+            status: "PENDING"
+        });
+
+        await notificationService.createForUser({
+            userId: vendorId,
+            title: "Yêu cầu nhập kho mới",
+            message: `Admin yêu cầu cung cấp ${qty} thiết bị ${newEquipment.name}.`,
+            type: "IMPORT_ORDER",
+            referenceId: newOrder._id,
+            referenceType: "ImportOrder"
         });
 
         return {
-            message: "Nhập kho thiết bị mới thành công!",
-            equipment: newEquipment
+            message: "Tạo thiết bị mới và gửi yêu cầu nhập kho thành công! Đang chờ Vendor xác nhận cung cấp.",
+            equipment: newEquipment,
+            importOrder: newOrder
         };
     }
 
@@ -476,105 +548,6 @@ class AdminService {
             equipment
         };
     }
-
-    // ======================== MAINTENANCE ========================
-    /**
-     * Lấy danh sách yêu cầu bảo trì
-     */
-    async getAllMaintenance(queryParams) {
-        const { targetType, status, limit = 10, page = 1 } = queryParams;
-
-        const parsedLimit = parseInt(limit);
-        const parsedPage = parseInt(page);
-        const skip = (parsedPage - 1) * parsedLimit;
-
-        const filter = {};
-        if (targetType && ["COURT", "EQUIPMENT"].includes(targetType.toUpperCase())) {
-            filter.targetType = targetType.toUpperCase();
-        }
-        if (status && ["REPORTED", "IN_PROGRESS", "COMPLETED"].includes(status.toUpperCase())) {
-            filter.status = status.toUpperCase();
-        }
-
-        const { records, total } = await adminRepository.findAllMaintenance(filter, skip, parsedLimit);
-
-        return {
-            records,
-            pagination: {
-                totalItems: total,
-                currentPage: parsedPage,
-                totalPages: Math.ceil(total / parsedLimit),
-                limit: parsedLimit
-            }
-        };
-    }
-
-    /**
-     * Tạo yêu cầu bảo trì mới
-     */
-    async createMaintenance(adminId, data) {
-        const { targetType, targetId, title, description, severity } = data;
-
-        if (!targetType || !targetId || !title) {
-            throw new Error("Vui lòng điền đầy đủ thông tin yêu cầu bảo trì!");
-        }
-
-        // Nếu bảo trì sân → tự động block sân
-        if (targetType.toUpperCase() === "COURT") {
-            const court = await adminRepository.findCourtById(targetId);
-            if (!court) throw new Error("Cụm sân mục tiêu không tồn tại!");
-            await adminRepository.updateCourt(targetId, { status: "MAINTENANCE" });
-        }
-
-        const record = await adminRepository.createMaintenance({
-            targetType: targetType.toUpperCase(),
-            targetId,
-            title: title.trim(),
-            description: description?.trim() || "",
-            severity: severity?.toUpperCase() || "LOW",
-            status: "REPORTED",
-            maintenanceDate: new Date(),
-            createdBy: adminId
-        });
-
-        return {
-            message: "Tạo yêu cầu bảo trì thành công!",
-            record
-        };
-    }
-
-    /**
-     * Cập nhật trạng thái bảo trì
-     */
-    async updateMaintenanceStatus(maintenanceId, newStatus) {
-        const record = await adminRepository.findMaintenanceById(maintenanceId);
-        if (!record) throw new Error("Yêu cầu bảo trì không tồn tại!");
-
-        const validStatuses = ["REPORTED", "IN_PROGRESS", "COMPLETED"];
-        if (!validStatuses.includes(newStatus.toUpperCase())) {
-            throw new Error("Trạng thái không hợp lệ!");
-        }
-
-        const updateData = { status: newStatus.toUpperCase() };
-
-        // Nếu hoàn thành bảo trì → tự động mở lại sân
-        if (newStatus.toUpperCase() === "COMPLETED") {
-            updateData.completedDate = new Date();
-
-            if (record.targetType === "COURT") {
-                await adminRepository.updateCourt(record.targetId, { status: "AVAILABLE" });
-            }
-        }
-
-        const updatedRecord = await adminRepository.updateMaintenance(maintenanceId, updateData);
-
-        return {
-            message: `Cập nhật trạng thái bảo trì sang "${newStatus.toUpperCase()}" thành công!`,
-            record: updatedRecord
-        };
-    }
-
-    // ======================== ANALYTICS ========================
     /**
      * Tổng quan Dashboard
      */
@@ -654,15 +627,22 @@ class AdminService {
      * Danh sách user
      */
     async getAllUsers(queryParams) {
-        const { role, status, search, limit = 10, page = 1 } = queryParams;
+        const { role, vendorType, status, search, limit = 10, page = 1 } = queryParams;
 
         const parsedLimit = parseInt(limit);
         const parsedPage = parseInt(page);
         const skip = (parsedPage - 1) * parsedLimit;
 
         const filter = {};
-        if (role && ["USER", "ADMIN"].includes(role.toUpperCase())) {
-            filter.role = role.toUpperCase();
+        if (role) {
+            const validRoles = ["USER", "ADMIN", "VENDOR", "SHIPPER", "MAINTENANCE_STAFF"];
+            const upperRole = role.toUpperCase();
+            if (validRoles.includes(upperRole)) {
+                filter.role = upperRole;
+            }
+        }
+        if (vendorType && ["COURT", "EQUIPMENT"].includes(vendorType.toUpperCase())) {
+            filter.vendorType = vendorType.toUpperCase();
         }
         if (status && ["ACTIVE", "BLOCKED"].includes(status.toUpperCase())) {
             filter.status = status.toUpperCase();
@@ -730,6 +710,450 @@ class AdminService {
             message: newStatus === "BLOCKED"
                 ? "Đã khóa tài khoản người dùng!"
                 : "Đã mở khóa tài khoản người dùng!",
+            user: updatedUser
+        };
+    }
+
+    // ======================== SUBCOURTS & MAINTENANCE ========================
+    async getSubCourtsByCourtId(courtId) {
+        const court = await adminRepository.findCourtById(courtId);
+        if (!court) throw new Error('Cum san khong ton tai!');
+        return await SubCourt.find({ courtId }).sort({ name: 1 });
+    }
+
+    async createSubCourt(courtId, name) {
+        if (!courtId || !name) throw new Error("Vui lòng nhập đầy đủ thông tin!");
+        const court = await Court.findById(courtId);
+        if (!court) throw new Error("Cụm sân không tồn tại!");
+
+        const duplicate = await SubCourt.findOne({ courtId, name: name.trim(), status: { $ne: "HIDDEN" } });
+        if (duplicate) throw new Error(`Sân nhỏ với tên "${name.trim()}" đã tồn tại trong cụm sân này!`);
+
+        const hiddenSubCourt = await SubCourt.findOne({ courtId, name: name.trim(), status: "HIDDEN" });
+        let subCourt;
+        if (hiddenSubCourt) {
+            hiddenSubCourt.status = "AVAILABLE";
+            subCourt = await hiddenSubCourt.save();
+        } else {
+            subCourt = await SubCourt.create({
+                courtId,
+                name: name.trim(),
+                status: "AVAILABLE"
+            });
+        }
+
+        await generateSlotsForNewSubCourt(courtId, subCourt);
+        return { message: "Tạo sân nhỏ mới thành công!", subCourt };
+    }
+
+    async updateSubCourt(subCourtId, data) {
+        const { name, status } = data;
+        const subCourt = await SubCourt.findById(subCourtId);
+        if (!subCourt) throw new Error("Sân nhỏ không tồn tại!");
+
+        if (name && name.trim() !== subCourt.name) {
+            const duplicate = await SubCourt.findOne({ 
+                courtId: subCourt.courtId, 
+                name: name.trim(), 
+                _id: { $ne: subCourtId },
+                status: { $ne: "HIDDEN" }
+            });
+            if (duplicate) throw new Error(`Sân nhỏ với tên "${name.trim()}" đã tồn tại trong cụm sân này!`);
+            subCourt.name = name.trim();
+        }
+
+        if (status && status !== subCourt.status) {
+            const upperStatus = status.toUpperCase();
+            if (!["AVAILABLE", "MAINTENANCE", "HIDDEN"].includes(upperStatus)) {
+                throw new Error("Trạng thái không hợp lệ!");
+            }
+
+            if (["MAINTENANCE", "HIDDEN"].includes(upperStatus)) {
+                const todayStr = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).split(" ")[0];
+                const activeBookingsExist = await CourtSlot.exists({
+                    subCourtId,
+                    date: { $gte: todayStr },
+                    isBooked: true
+                });
+                if (activeBookingsExist) {
+                    throw new Error("Không thể thay đổi trạng thái sân nhỏ này vì đã có lịch đặt trong tương lai!");
+                }
+            }
+            subCourt.status = upperStatus;
+        }
+
+        const updated = await subCourt.save();
+        if (updated.status === "AVAILABLE") {
+            await generateSlotsForNewSubCourt(updated.courtId, updated);
+        }
+
+        return { message: "Cập nhật sân nhỏ thành công!", subCourt: updated };
+    }
+
+    async deleteSubCourt(subCourtId) {
+        const subCourt = await SubCourt.findById(subCourtId);
+        if (!subCourt) throw new Error("Sân nhỏ không tồn tại!");
+
+        const todayStr = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).split(" ")[0];
+        const activeBookingsExist = await CourtSlot.exists({
+            subCourtId,
+            date: { $gte: todayStr },
+            isBooked: true
+        });
+        if (activeBookingsExist) {
+            throw new Error("Không thể xóa sân nhỏ này vì đã có lịch đặt trong tương lai!");
+        }
+
+        subCourt.status = "HIDDEN";
+        await subCourt.save();
+
+        await CourtSlot.deleteMany({
+            subCourtId,
+            date: { $gte: todayStr },
+            isBooked: false
+        });
+
+        return { message: "Đã xóa sân nhỏ thành công!" };
+    }
+
+    async getAllMaintenance(queryParams) {
+        const { targetType, status, limit = 10, page = 1 } = queryParams;
+        const parsedLimit = parseInt(limit); const parsedPage = parseInt(page); const skip = (parsedPage - 1) * parsedLimit;
+        const filter = {};
+        if (targetType && ['COURT','EQUIPMENT'].includes(targetType.toUpperCase())) filter.targetType = targetType.toUpperCase();
+        if (status && ['REPORTED','ASSIGNED','IN_PROGRESS','PENDING_CONFIRMATION','COMPLETED'].includes(status.toUpperCase())) filter.status = status.toUpperCase();
+        const { records, total } = await adminRepository.findAllMaintenance(filter, skip, parsedLimit);
+        const courtIds = records.filter(r => r.targetType === 'COURT').map(r => r.targetId);
+        const eqIds = records.filter(r => r.targetType === 'EQUIPMENT').map(r => r.targetId);
+        const vendorIds = records.filter(r => r.assignedVendorId).map(r => r.assignedVendorId);
+        const [courts, equipments, vendors] = await Promise.all([Court.find({ _id: { $in: courtIds } }).select('name location'), Equipment.find({ _id: { $in: eqIds } }).select('name'), User.find({ _id: { $in: vendorIds } }).select('fullName email')]);
+        const courtMap = new Map(courts.map(c => [c._id.toString(), c]));
+        const eqMap = new Map(equipments.map(e => [e._id.toString(), e]));
+        const vendorMap = new Map(vendors.map(v => [v._id.toString(), v]));
+        const recordsWithDetails = records.map(r => { const rObj = r.toObject(); if (r.targetType === 'COURT') { const court = courtMap.get(r.targetId.toString()); rObj.targetName = court ? court.name : 'San da xoa'; rObj.targetLocation = court ? court.location : ''; } else { const eq = eqMap.get(r.targetId.toString()); rObj.targetName = eq ? eq.name : 'Thiet bi da xoa'; } if (r.assignedVendorId) { const v = vendorMap.get(r.assignedVendorId.toString()); rObj.assignedVendor = v ? { fullName: v.fullName, email: v.email } : null; } return rObj; });
+        return { records: recordsWithDetails, pagination: { totalItems: total, currentPage: parsedPage, totalPages: Math.ceil(total / parsedLimit), limit: parsedLimit } };
+    }
+
+    async createMaintenance(adminId, data, files = []) {
+        const { targetType, targetId, title, description, severity, subCourtIds } = data;
+        if (!targetType || !targetId || !title) throw new Error('Vui long dien day du thong tin!');
+        let assignedVendorId = null; let affectedSubCourtIds = [];
+        if (targetType.toUpperCase() === 'COURT') {
+            const court = await adminRepository.findCourtById(targetId);
+            if (!court) throw new Error('Cum san khong ton tai!');
+            assignedVendorId = court.vendorId?._id || court.vendorId;
+            if (!assignedVendorId) throw new Error('Cum san chua duoc gan chu san!');
+            const courtOwner = await User.findOne({ _id: assignedVendorId, role: 'VENDOR', vendorType: 'COURT', status: 'ACTIVE' });
+            if (!courtOwner) throw new Error('Chu san khong hop le!');
+            const parsedSubCourtIds = Array.isArray(subCourtIds) ? subCourtIds : (typeof subCourtIds === 'string' && subCourtIds ? subCourtIds.split(',').map(s => s.trim()).filter(Boolean) : []);
+            if (parsedSubCourtIds.length > 0) { await SubCourt.updateMany({ _id: { $in: parsedSubCourtIds }, courtId: targetId }, { $set: { status: 'MAINTENANCE' } }); affectedSubCourtIds = parsedSubCourtIds; }
+            else { const allSubCourts = await adminRepository.findSubCourtsByCourtId(targetId); affectedSubCourtIds = allSubCourts.map(sc => sc._id); await SubCourt.updateMany({ courtId: targetId }, { $set: { status: 'MAINTENANCE' } }); }
+        } else if (targetType.toUpperCase() === 'EQUIPMENT') {
+            const eq = await adminRepository.findEquipmentById(targetId);
+            if (!eq) throw new Error('Thiết bị không tồn tại!');
+            assignedVendorId = eq.vendorId || null;
+            
+            const maintenanceQty = parseInt(data.maintenanceQty) || 1;
+            if (isNaN(maintenanceQty) || maintenanceQty <= 0) {
+                throw new Error('Số lượng bảo trì phải lớn hơn 0!');
+            }
+            
+            const currentMaintQty = eq.maintenanceQuantity || 0;
+            if (eq.availableQuantity - currentMaintQty < maintenanceQty) {
+                throw new Error(`Số lượng khả dụng (${eq.availableQuantity - currentMaintQty} chiếc) không đủ để bảo trì ${maintenanceQty} chiếc!`);
+            }
+            
+            // Kiểm tra xung đột với các đơn đặt lịch chưa chơi/chưa hủy
+            const activeBookings = await Booking.find({
+                status: { $in: ["PENDING", "CONFIRMED", "COMPLETED"] }
+            });
+            
+            const bookingIds = activeBookings.map(b => b._id);
+            const activeRentals = await BookingEquipment.find({
+                bookingId: { $in: bookingIds },
+                equipmentId: eq._id,
+                returnStatus: "RENTING"
+            });
+            
+            if (activeRentals.length > 0) {
+                for (const rental of activeRentals) {
+                    const booking = activeBookings.find(b => b._id.toString() === rental.bookingId.toString());
+                    if (!booking) continue;
+                    
+                    const overlappingBookings = activeBookings.filter(ob => 
+                        ob.bookingDate === booking.bookingDate &&
+                        ob.startTime < booking.endTime &&
+                        ob.endTime > booking.startTime
+                    );
+                    const overlappingIds = overlappingBookings.map(ob => ob._id.toString());
+                    
+                    const overlappingRentals = activeRentals.filter(r => 
+                        overlappingIds.includes(r.bookingId.toString())
+                    );
+                    const totalRentedAtSlot = overlappingRentals.reduce((sum, r) => sum + r.quantity, 0);
+                    
+                    const proposedRemaining = eq.availableQuantity - (currentMaintQty + maintenanceQty);
+                    if (totalRentedAtSlot > proposedRemaining) {
+                        throw new Error(`Xung đột: Đơn đặt sân #${booking.bookingCode} đã thuê ${totalRentedAtSlot} chiếc thiết bị này vào ngày ${booking.bookingDate} (${booking.startTime}-${booking.endTime}). Nếu bảo trì thêm ${maintenanceQty} chiếc, hệ thống sẽ thiếu thiết bị.`);
+                    }
+                }
+            }
+            
+            const newMQ = currentMaintQty + maintenanceQty;
+            const newDC = (eq.damagedCount || 0) + maintenanceQty;
+            const newStatus = (eq.availableQuantity - newMQ <= 0) ? 'DAMAGED' : eq.status;
+            await adminRepository.updateEquipment(targetId, { maintenanceQuantity: newMQ, damagedCount: newDC, status: newStatus });
+            data.equipmentMaintenanceQty = maintenanceQty;
+        }
+        const images = (files || []).map(f => ({ imageUrl: f.path, publicId: f.filename }));
+        const record = await adminRepository.createMaintenance({ 
+            targetType: targetType.toUpperCase(), 
+            targetId, 
+            affectedSubCourtIds, 
+            title: title.trim(), 
+            description: description?.trim() || '', 
+            images, 
+            severity: severity?.toUpperCase() || 'LOW', 
+            status: 'REPORTED', 
+            maintenanceDate: new Date(), 
+            createdBy: adminId, 
+            assignedVendorId,
+            equipmentMaintenanceQty: data.equipmentMaintenanceQty || 1
+        });
+        if (assignedVendorId) await notificationService.createForUser({ userId: assignedVendorId, title: 'Yeu cau bao tri moi', message: 'Da duoc tao.', type: 'MAINTENANCE', referenceId: record._id, referenceType: 'Maintenance' });
+        return { message: 'Tao yeu cau bao tri thanh cong!', record };
+    }
+
+    async getEquipmentRentals(equipmentId) {
+        if (!equipmentId) throw new Error("Thiếu mã thiết bị!");
+        await bookingService.autoCompletePastBookings();
+        const eq = await Equipment.findById(equipmentId);
+        if (!eq) throw new Error("Thiết bị không tồn tại!");
+
+        const rentals = await BookingEquipment.find({ equipmentId })
+            .populate({
+                path: "bookingId",
+                populate: {
+                    path: "userId",
+                    select: "fullName phone email"
+                }
+            });
+
+        const activeRentals = rentals
+            .filter(r => r.bookingId && !["CANCELLED"].includes(r.bookingId.status))
+            .map(r => ({
+                bookingCode: r.bookingId.bookingCode,
+                bookingId: r.bookingId._id,
+                clientName: r.bookingId.userId?.fullName || "Khách hàng",
+                clientPhone: r.bookingId.userId?.phone || "N/A",
+                bookingDate: r.bookingId.bookingDate,
+                startTime: r.bookingId.startTime,
+                endTime: r.bookingId.endTime,
+                status: r.bookingId.status,
+                quantity: r.quantity,
+                rentalPrice: r.rentalPrice,
+                subtotal: r.subtotal,
+                returnStatus: r.returnStatus
+            }))
+            .sort((a, b) => {
+                if (a.bookingDate !== b.bookingDate) {
+                    return a.bookingDate.localeCompare(b.bookingDate);
+                }
+                return a.startTime.localeCompare(b.startTime);
+            });
+
+        return activeRentals;
+    }
+
+    async updateMaintenanceStatus() {
+        throw new Error('Admin khong duoc phep cap nhat trang thai bao tri!');
+    }
+
+    // ======================== ADDITIONAL ADMIN SERVICE METHODS ========================
+    async deleteCourtImage(courtId, publicId) {
+        const court = await adminRepository.findCourtById(courtId);
+        if (!court) throw new Error("Cụm sân không tồn tại!");
+
+        const initialLength = court.images.length;
+        court.images = court.images.filter(img => img.publicId !== publicId);
+
+        if (court.images.length === initialLength) {
+            throw new Error("Hình ảnh không tồn tại trong cụm sân!");
+        }
+
+        await court.save();
+
+        if (publicId) {
+            await uploadService.deleteFile(publicId);
+        }
+
+        return {
+            message: "Xóa hình ảnh sân thành công!",
+            court
+        };
+    }
+
+    async createImportOrder(adminId, data) {
+        const { equipmentId, quantity, vendorId } = data;
+
+        if (!equipmentId || !quantity || !vendorId) {
+            throw new Error("Vui lòng điền đầy đủ thông tin: Thiết bị, Số lượng, Nhà cung cấp!");
+        }
+
+        const qty = parseInt(quantity);
+        if (isNaN(qty) || qty <= 0) {
+            throw new Error("Số lượng phải lớn hơn 0!");
+        }
+
+        const equipment = await Equipment.findById(equipmentId);
+        if (!equipment) {
+            throw new Error("Thiết bị không tồn tại!");
+        }
+
+        const vendor = await User.findOne({ _id: vendorId, role: "VENDOR" });
+        if (!vendor) {
+            throw new Error("Nhà cung cấp không tồn tại hoặc không hợp lệ!");
+        }
+
+        const newOrder = await ImportOrder.create({
+            equipmentId,
+            vendorId,
+            adminId,
+            quantity: qty,
+            status: "PENDING"
+        });
+
+        await notificationService.createForUser({
+            userId: vendorId,
+            title: "Yêu cầu nhập kho mới",
+            message: `Admin yêu cầu nhập kho ${qty} thiết bị ${equipment.name}.`,
+            type: "IMPORT_ORDER",
+            referenceId: newOrder._id,
+            referenceType: "ImportOrder"
+        });
+
+        return {
+            message: "Tạo đơn nhập kho thành công! Đang chờ Vendor xác nhận.",
+            order: newOrder
+        };
+    }
+
+    async getImportOrders(queryParams) {
+        const { status, limit = 10, page = 1 } = queryParams;
+
+        const parsedLimit = parseInt(limit);
+        const parsedPage = parseInt(page);
+        const skip = (parsedPage - 1) * parsedLimit;
+
+        const filter = {};
+        if (status && ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].includes(status.toUpperCase())) {
+            filter.status = status.toUpperCase();
+        }
+
+        const [orders, total] = await Promise.all([
+            ImportOrder.find(filter)
+                .populate("equipmentId", "name type image")
+                .populate("vendorId", "fullName email")
+                .populate("adminId", "fullName email")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parsedLimit),
+            ImportOrder.countDocuments(filter)
+        ]);
+
+        const ordersWithDelivery = await Promise.all(orders.map(async (order) => {
+            const delivery = await Delivery.findOne({ importOrderId: order._id })
+                .populate("shipperId", "fullName email phone");
+            return {
+                ...order.toObject(),
+                delivery: delivery ? delivery.toObject() : null
+            };
+        }));
+
+        return {
+            orders: ordersWithDelivery,
+            pagination: {
+                totalItems: total,
+                currentPage: parsedPage,
+                totalPages: Math.ceil(total / parsedLimit),
+                limit: parsedLimit
+            }
+        };
+    }
+
+    async cancelImportOrder(orderId) {
+        const order = await ImportOrder.findById(orderId).populate("equipmentId", "name");
+        if (!order) throw new Error("Yêu cầu nhập kho không tồn tại!");
+        if (["COMPLETED", "CANCELLED"].includes(order.status)) {
+            throw new Error(`Đơn hàng đã kết thúc (Hiện tại: ${order.status})`);
+        }
+        order.status = "CANCELLED";
+        await order.save();
+
+        await Delivery.findOneAndUpdate(
+            { importOrderId: order._id },
+            { $set: { status: "CANCELLED" } }
+        );
+
+        await notificationService.createForUser({
+            userId: order.vendorId,
+            title: "Đơn nhập kho bị hủy",
+            message: `Admin đã hủy yêu cầu nhập kho của thiết bị ${order.equipmentId?.name || ""}.`,
+            type: "IMPORT_ORDER",
+            referenceId: order._id,
+            referenceType: "ImportOrder"
+        });
+
+        return {
+            message: "Hủy đơn nhập kho thành công!",
+            order
+        };
+    }
+
+    async getSettings() {
+        return await systemSettingService.getAllSettings();
+    }
+
+    async updateSettings(updates) {
+        for (const key of Object.keys(updates)) {
+            await systemSettingService.updateSetting(key, updates[key]);
+        }
+        return await systemSettingService.getAllSettings();
+    }
+
+    async updateUserRole(userId, data) {
+        const { role, vendorType } = data;
+        const user = await User.findById(userId);
+        if (!user) throw new Error("Người dùng không tồn tại!");
+
+        if (!role) throw new Error("Thiếu thông tin vai trò (role)!");
+
+        const validRoles = ["USER", "ADMIN", "VENDOR", "SHIPPER", "MAINTENANCE_STAFF"];
+        const updatedRole = role.toUpperCase();
+        if (!validRoles.includes(updatedRole)) {
+            throw new Error(`Vai trò không hợp lệ: ${role}`);
+        }
+
+        const updateData = { role: updatedRole };
+
+        if (updatedRole === "VENDOR") {
+            if (vendorType && ["COURT", "EQUIPMENT"].includes(vendorType.toUpperCase())) {
+                updateData.vendorType = vendorType.toUpperCase();
+            } else {
+                throw new Error("Nếu vai trò là VENDOR, loại vendorType phải là COURT hoặc EQUIPMENT!");
+            }
+        } else {
+            updateData.vendorType = null;
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).select("-password");
+
+        return {
+            message: "Cập nhật vai trò người dùng thành công!",
             user: updatedUser
         };
     }

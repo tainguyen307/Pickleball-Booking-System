@@ -6,19 +6,39 @@ import redisClient from "../config/redis.js";
 import jwtUtil from "../utils/jwt.util.js";
 import googleAuthUtil from "../utils/googleAuth.util.js";
 import mailUtil from "../utils/mail.util.js";
-import crypto from "crypto";
 
 class AuthService {
+    debugLogin(stage, payload) {
+        if (process.env.AUTH_DEBUG_LOGIN !== "true") return;
+        console.log("[AUTH_DEBUG_LOGIN]", stage, payload);
+    }
+
+    getRedirectUrl(user) {
+        if (user.role === "ADMIN") return "/admin";
+        if (user.role === "VENDOR") return "/vendor";
+        if (user.role === "SHIPPER") return "/shipper";
+        if (user.role === "MAINTENANCE_STAFF") return "/maintenance-staff";
+        return "/";
+    }
+
     /**
      * Logic Đăng nhập hệ thống bằng Email & Mật khẩu
      */
     async loginWithPassword({ email, password }) {
         const user = await userRepository.findByEmail(email);
+        this.debugLogin("lookup", {
+            email,
+            found: Boolean(user),
+            role: user?.role,
+            vendorType: user?.vendorType,
+            status: user?.status
+        });
         if (!user) throw new Error("Email hoặc mật khẩu không chính xác!");
 
         if (user.status === "BLOCKED") throw new Error("Tài khoản của bạn hiện đang bị khóa!");
 
         const isMatch = await bcrypt.compare(password, user.password);
+        this.debugLogin("password_compare", { email, match: isMatch });
         if (!isMatch) throw new Error("Email hoặc mật khẩu không chính xác!");
 
         // Sử dụng JwtUtils để sinh bộ đôi token sạch sẽ
@@ -29,7 +49,8 @@ class AuthService {
         await redisClient.set(`refresh:${user._id}`, refreshToken, "EX", 7 * 24 * 60 * 60);
 
         await userRepository.updateLastLogin(user);
-        const redirectUrl = user.role === "ADMIN" ? "/admin" : "/";
+        const redirectUrl = this.getRedirectUrl(user);
+        this.debugLogin("success", { email, role: user.role, vendorType: user.vendorType, redirectUrl });
 
         return { accessToken, refreshToken, redirectUrl, user };
     }
@@ -74,7 +95,7 @@ class AuthService {
 
         // 7. Lưu lịch sử login và trả về kết quả
         await userRepository.updateLastLogin(user); //
-        const redirectUrl = user.role === "ADMIN" ? "/admin" : "/";
+        const redirectUrl = this.getRedirectUrl(user);
 
         return { accessToken, refreshToken, redirectUrl, user };
     }
@@ -186,7 +207,7 @@ class AuthService {
             fullName: registerData.fullName,
             email: registerData.email,
             password: registerData.password,
-            status: "ACTIVE" // Kích hoạt tài khoản luôn
+            status: "ACTIVE"
         });
 
         // 4. Dọn rác sạch sẽ trên Redis
@@ -196,68 +217,72 @@ class AuthService {
     }
 
     /**
-     * Logic Tạo mã khôi phục mật khẩu và gửi EMAIL THẬT cho khách hàng
+     * Logic Tạo mã OTP khôi phục mật khẩu và gửi EMAIL cho khách hàng
      */
-    async generateResetPasswordToken(email) {
+    async generateForgotPasswordOTP(email) {
         const user = await userRepository.findByEmail(email);
-
-        // Chuẩn doanh nghiệp: Nếu không thấy user, vẫn trả về true để tránh bị hacker scan hòm thư
-        if (!user || user.status === "BLOCKED") {
-            return true;
+        if (!user) {
+            throw new Error("Địa chỉ email không tồn tại trên hệ thống!");
+        }
+        if (user.status === "BLOCKED") {
+            throw new Error("Tài khoản của bạn đã bị khóa khỏi hệ thống!");
         }
 
-        // Tạo mã Token bảo mật ngẫu nhiên
-        const resetToken = crypto.randomBytes(32).toString("hex");
+        // Kiểm tra giới hạn gửi OTP (tối đa 3 lần trong 15 phút)
+        const countKey = `forgot-password-count:${email}`;
+        const countRaw = await redisClient.get(countKey);
+        const count = countRaw ? parseInt(countRaw, 10) : 0;
 
-        // Lưu khóa khôi phục tạm thời lên Redis trong vòng 15 phút
-        const redisKey = `password-reset:${user._id}`;
-        await redisClient.set(redisKey, resetToken, "EX", 15 * 60);
+        if (count >= 3) {
+            throw new Error("Bạn đã vượt quá số lần gửi OTP cho phép. Vui lòng thử lại sau 15 phút!");
+        }
 
-        // Tạo đường dẫn link khôi phục trỏ về Frontend
-        const resetLink = `http://localhost:5173/reset-password?token=${resetToken}&id=${user._id}`;
+        // Sinh mã OTP ngẫu nhiên 6 chữ số
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // 🎯 GỬI EMAIL THỰC TẾ: Gọi lệnh xuyên hòm thư thông qua MailUtil
-        // Hệ thống sẽ chạy bất đồng bộ nên ta dùng await để bắt lỗi nếu Mail Server sập
-        await mailUtil.sendResetPasswordEmail(user.email, user.fullName, resetLink);
+        // Lưu OTP vào Redis trong vòng 5 phút (300 giây)
+        const otpKey = `forgot-password-otp:${email}`;
+        await redisClient.set(otpKey, otp, "EX", 5 * 60);
+
+        // Cập nhật số lần gửi OTP trong Redis
+        if (count === 0) {
+            await redisClient.set(countKey, 1, "EX", 15 * 60);
+        } else {
+            await redisClient.incr(countKey);
+        }
+
+        // Gửi email OTP
+        await mailUtil.sendForgotPasswordOTPEmail(email, user.fullName, otp);
 
         return true;
     }
 
     /**
-     * Logic Xác thực token từ Redis và cập nhật mật khẩu mới vào Database
+     * Logic Xác thực mã OTP và cập nhật mật khẩu mới vào Database
      */
-    async resetPassword({ userId, token, newPassword }) {
-        // 1. Kiểm tra mã xác thực tạm thời trên Redis xem có tồn tại không
-        const redisKey = `password-reset:${userId}`;
-        const savedToken = await redisClient.get(redisKey);
+    async resetPasswordWithOTP({ email, otpCode, newPassword }) {
+        const otpKey = `forgot-password-otp:${email}`;
+        const savedOtp = await redisClient.get(otpKey);
 
-        if (!savedToken) {
-            throw new Error("Yêu cầu khôi phục mật khẩu đã hết hạn 15 phút. Vui lòng thử lại!");
+        if (!savedOtp) {
+            throw new Error("Mã OTP đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu lại mã mới!");
         }
 
-        // 2. Đối chiếu Token từ Client gửi lên với Token xịn lưu trên Redis Whitelist
-        if (savedToken !== token) {
-            throw new Error("Mã xác thực khôi phục mật khẩu không hợp lệ!");
+        if (savedOtp !== otpCode) {
+            throw new Error("Mã OTP nhập vào không chính xác!");
         }
 
-        // 3. Truy tìm người dùng trong DB
-        const user = await userRepository.findById(userId);
+        const user = await userRepository.findByEmail(email);
         if (!user || user.status === "BLOCKED") {
             throw new Error("Tài khoản không hợp lệ hoặc đã bị khóa khỏi hệ thống!");
         }
 
-        // 4. Mã hóa mật khẩu mới bằng bcryptjs y hệt luồng Register / Seed
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
-        const savedResult = await user.save(); // Thực thi lưu
+        await user.save();
 
-        // 5. 🎯 BƯỚC QUAN TRỌNG: Xóa sạch Key trên Redis ngay lập tức để vô hiệu hóa token này vĩnh viễn
-        try {
-            await redisClient.del(redisKey);
-            console.log("🗑️  Đã xóa Key khôi phục trên Redis thành công!");
-        } catch (redisError) {
-            console.error("⚠️ Cảnh báo: Không xóa được Key Redis nhưng vẫn bỏ qua:", redisError.message);
-        }
+        // Xóa OTP khỏi Redis sau khi sử dụng thành công (chỉ dùng 1 lần)
+        await redisClient.del(otpKey);
 
         return true;
     }

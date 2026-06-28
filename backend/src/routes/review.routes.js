@@ -2,6 +2,7 @@ import express from "express";
 import reviewController from "../controllers/review.controller.js";
 import { verifyToken, requireAdmin } from "../middlewares/auth.middleware.js";
 import { globalLimiter } from "../middlewares/rateLimiter.middleware.js";
+import { uploadReviewCloud } from "../config/cloudinary.js";
 import {
     createReviewValidator,
     handleValidationErrors,
@@ -32,6 +33,8 @@ router.post(
     "/",
     globalLimiter,
     verifyToken,
+    // Upload tối đa 5 ảnh kèm review vào folder PickleballPro_Media/reviews/
+    uploadReviewCloud.array("images", 5),
     createReviewValidator,
     handleValidationErrors,
     reviewController.createReview

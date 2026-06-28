@@ -78,4 +78,13 @@ router.put(
     handleValidationErrors,
     (req, res) => authController.resetPassword(req, res)
 );
+
+/**
+ * Endpoint: POST /api/auth/refresh-token
+ */
+router.post(
+    "/refresh-token",
+    (req, res) => authController.refreshToken(req, res)
+);
+
 export default router;

@@ -3,10 +3,27 @@ import Equipment from "../models/equipment.model.js";
 
 class EquipmentRepository {
     /**
-     * Lấy toàn bộ danh mục thiết bị đang sẵn sàng cho thuê
+     * ✅ Fix #10: Lấy thiết bị AVAILABLE, lọc theo courtId nếu có
+     * Tránh user đặt sân ở HN nhưng hiển thị thiết bị của sân ở HCM
      */
-    async findAvailableEquipments() {
-        return await Equipment.find({ status: "AVAILABLE" });
+    async findAvailableEquipments(courtId = null) {
+        const filter = {
+            status: "AVAILABLE",
+            $expr: {
+                $gt: [
+                    { $subtract: ["$availableQuantity", { $ifNull: ["$maintenanceQuantity", 0] }] },
+                    0
+                ]
+            }
+        };
+        if (courtId) {
+            // Lấy thiết bị thuộc court cụ thể HOẶC thiết bị global (courtId = null)
+            filter.$or = [
+                { courtId: courtId },
+                { courtId: null }
+            ];
+        }
+        return await Equipment.find(filter);
     }
 
     /**

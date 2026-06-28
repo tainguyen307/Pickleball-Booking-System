@@ -3,7 +3,15 @@ import reviewService from "../services/review.service.js";
 class ReviewController {
     async createReview(req, res) {
         try {
-            const result = await reviewService.createReview(req.user.id, req.body);
+            // Map ảnh từ Multer/Cloudinary sang format {imageUrl, publicId}
+            const uploadedImages = (req.files || []).map(f => ({
+                imageUrl: f.path,
+                publicId: f.filename
+            }));
+            const result = await reviewService.createReview(req.user.id, {
+                ...req.body,
+                images: uploadedImages
+            });
             return res.status(201).json({ success: true, ...result });
         } catch (error) {
             return res.status(400).json({ success: false, message: error.message });

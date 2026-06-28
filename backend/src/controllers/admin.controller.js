@@ -1,5 +1,6 @@
 // src/controllers/admin.controller.js
 import adminService from "../services/admin.service.js";
+import { handleError } from "../utils/errorHandler.js";
 
 class AdminController {
     // ======================== COURTS ========================
@@ -57,6 +58,26 @@ class AdminController {
         }
     }
 
+    async getSubCourts(req, res) {
+        try {
+            const subCourts = await adminService.getSubCourtsByCourtId(req.params.id);
+            return res.status(200).json({ success: true, subCourts });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteCourtImage(req, res) {
+        try {
+            const { id, publicId } = req.params;
+            const result = await adminService.deleteCourtImage(id, publicId);
+            return res.status(200).json({ success: true, ...result });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+
     // ======================== BOOKINGS ========================
     async getAllBookings(req, res) {
         try {
@@ -107,7 +128,11 @@ class AdminController {
 
     async createEquipment(req, res) {
         try {
-            const result = await adminService.createEquipment(req.body);
+            const data = { ...req.body };
+            if (req.file) {
+                data.image = req.file.path;
+            }
+            const result = await adminService.createEquipment(req.user.id, data);
             return res.status(201).json({ success: true, ...result });
         } catch (error) {
             return res.status(400).json({ success: false, message: error.message });
@@ -116,7 +141,11 @@ class AdminController {
 
     async updateEquipment(req, res) {
         try {
-            const result = await adminService.updateEquipment(req.params.id, req.body);
+            const data = { ...req.body };
+            if (req.file) {
+                data.image = req.file.path;
+            }
+            const result = await adminService.updateEquipment(req.params.id, data);
             return res.status(200).json({ success: true, ...result });
         } catch (error) {
             return res.status(400).json({ success: false, message: error.message });
@@ -142,6 +171,44 @@ class AdminController {
         }
     }
 
+    async getEquipmentRentals(req, res) {
+        try {
+            const rentals = await adminService.getEquipmentRentals(req.params.id);
+            return res.status(200).json({ success: true, rentals });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    // ======================== IMPORT ORDERS ========================
+    async createImportOrder(req, res) {
+        try {
+            const adminId = req.user.id;
+            const result = await adminService.createImportOrder(adminId, req.body);
+            return res.status(201).json({ success: true, ...result });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async getImportOrders(req, res) {
+        try {
+            const result = await adminService.getImportOrders(req.query);
+            return res.status(200).json({ success: true, ...result });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async cancelImportOrder(req, res) {
+        try {
+            const result = await adminService.cancelImportOrder(req.params.id);
+            return res.status(200).json({ success: true, ...result });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
     // ======================== MAINTENANCE ========================
     async getAllMaintenance(req, res) {
         try {
@@ -155,7 +222,7 @@ class AdminController {
     async createMaintenance(req, res) {
         try {
             const adminId = req.user.id;
-            const result = await adminService.createMaintenance(adminId, req.body);
+            const result = await adminService.createMaintenance(adminId, req.body, req.files);
             return res.status(201).json({ success: true, ...result });
         } catch (error) {
             return res.status(400).json({ success: false, message: error.message });
@@ -234,6 +301,62 @@ class AdminController {
             return res.status(200).json({ success: true, ...result });
         } catch (error) {
             return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async updateUserRole(req, res) {
+        try {
+            const result = await adminService.updateUserRole(req.params.id, req.body);
+            return res.status(200).json({ success: true, ...result });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    // ======================== SETTINGS ========================
+    async getSettings(req, res) {
+        try {
+            const settings = await adminService.getSettings();
+            return res.status(200).json({ success: true, settings });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async updateSettings(req, res) {
+        try {
+            const settings = await adminService.updateSettings(req.body);
+            return res.status(200).json({ success: true, message: "Cập nhật cấu hình thành công!", settings });
+        } catch (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async createSubCourt(req, res) {
+        try {
+            const { name } = req.body;
+            const result = await adminService.createSubCourt(req.params.courtId, name);
+            return res.status(201).json({ success: true, ...result });
+        } catch (error) {
+            return handleError(res, error);
+        }
+    }
+
+    async updateSubCourt(req, res) {
+        try {
+            const result = await adminService.updateSubCourt(req.params.id, req.body);
+            return res.status(200).json({ success: true, ...result });
+        } catch (error) {
+            return handleError(res, error);
+        }
+    }
+
+    async deleteSubCourt(req, res) {
+        try {
+            const result = await adminService.deleteSubCourt(req.params.id);
+            return res.status(200).json({ success: true, ...result });
+        } catch (error) {
+            return handleError(res, error);
         }
     }
 }

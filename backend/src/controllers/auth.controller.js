@@ -20,6 +20,10 @@ class AuthController {
                     fullName: result.user.fullName,
                     email: result.user.email,
                     role: result.user.role,
+                    vendorType: result.user.vendorType,
+                    maintenanceSkills: result.user.maintenanceSkills,
+                    phone: result.user.phone,
+                    status: result.user.status,
                     avatar: result.user.avatar
                 }
             });
@@ -53,6 +57,10 @@ class AuthController {
                     fullName: result.user.fullName,
                     email: result.user.email,
                     role: result.user.role,
+                    vendorType: result.user.vendorType,
+                    maintenanceSkills: result.user.maintenanceSkills,
+                    phone: result.user.phone,
+                    status: result.user.status,
                     avatar: result.user.avatar
                 }
             });
@@ -123,37 +131,34 @@ class AuthController {
     }
 
     /**
-     * Xử lý HTTP Request Yêu cầu Quên mật khẩu
+     * Xử lý HTTP Request Yêu cầu Quên mật khẩu bằng cách gửi OTP
      */
     async forgotPassword(req, res) {
         try {
             const { email } = req.body;
 
-            // Đẩy email xuống tầng Service chạy xử lý ngầm
-            await authService.generateResetPasswordToken(email);
+            await authService.generateForgotPasswordOTP(email);
 
-            // Phản hồi JSON đồng bộ theo quy chuẩn hệ thống của bạn
             return res.status(200).json({
                 success: true,
-                message: "Nếu email của bạn tồn tại trên hệ thống, một liên kết khôi phục mật khẩu đã được gửi đi thành công!"
+                message: "Mã OTP khôi phục mật khẩu đã được gửi thành công đến email của bạn!"
             });
         } catch (error) {
-            return res.status(500).json({
+            return res.status(400).json({
                 success: false,
-                message: "Có lỗi hệ thống xảy ra khi xử lý yêu cầu quên mật khẩu!"
+                message: error.message || "Có lỗi xảy ra khi xử lý yêu cầu quên mật khẩu!"
             });
         }
     }
 
     /**
-     * Xử lý HTTP Request Đổi mật khẩu mới sau khi xác thực link thành công
+     * Xử lý HTTP Request Đổi mật khẩu mới bằng OTP xác thực
      */
     async resetPassword(req, res) {
         try {
-            const { userId, token, newPassword } = req.body;
+            const { email, otpCode, newPassword } = req.body;
 
-            // Gọi Service xử lý kiểm tra chéo và ghi đè DB
-            await authService.resetPassword({ userId, token, newPassword });
+            await authService.resetPasswordWithOTP({ email, otpCode, newPassword });
 
             return res.status(200).json({
                 success: true,
@@ -186,6 +191,26 @@ class AuthController {
             return res.status(500).json({
                 success: false,
                 message: "Lỗi hệ thống khi đăng xuất!"
+            });
+        }
+    }
+
+    /**
+     * Xử lý HTTP Request Làm mới Access Token bằng Refresh Token
+     */
+    async refreshToken(req, res) {
+        try {
+            const { refreshToken } = req.body;
+            const newAccessToken = await authService.refreshAccessToken(refreshToken);
+
+            return res.status(200).json({
+                success: true,
+                accessToken: newAccessToken
+            });
+        } catch (error) {
+            return res.status(401).json({
+                success: false,
+                message: error.message || "Refresh token không hợp lệ hoặc đã hết hạn!"
             });
         }
     }

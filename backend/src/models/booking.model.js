@@ -7,6 +7,13 @@ const bookingSchema = new mongoose.Schema({
         unique: true
     },
 
+    // ✅ Fix #3: Lưu slotId để rollback chính xác đúng slot, tránh unlock nhầm slot của SubCourt khác
+    slotId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CourtSlot",
+        default: null
+    },
+
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -124,6 +131,11 @@ const bookingSchema = new mongoose.Schema({
 
     note: {
         type: String
+    },
+
+    isPrepared: {
+        type: Boolean,
+        default: false
     }
 
 }, {
