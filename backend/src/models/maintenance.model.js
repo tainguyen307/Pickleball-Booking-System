@@ -17,6 +17,20 @@ const maintenanceSchema =
             required: true
         },
 
+        // Chỉ có giá trị khi targetType = "COURT"
+        // Chứa danh sách SubCourt bị block, không block cả cụm sân
+        // Nếu rỗng → block toàn bộ SubCourt của Court đó (backward compat)
+        affectedSubCourtIds: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "SubCourt"
+        }],
+
+        // Số lượng thiết bị đưa vào bảo trì (chỉ áp dụng khi targetType = "EQUIPMENT")
+        equipmentMaintenanceQty: {
+            type: Number,
+            default: 1
+        },
+
         title: {
             type: String,
             required: true
@@ -25,6 +39,13 @@ const maintenanceSchema =
         description: {
             type: String
         },
+
+        images: [
+            {
+                imageUrl: { type: String, required: true },
+                publicId: { type: String, default: null }
+            }
+        ],
 
         severity: {
             type: String,
@@ -40,7 +61,9 @@ const maintenanceSchema =
             type: String,
             enum: [
                 "REPORTED",
+                "ASSIGNED",
                 "IN_PROGRESS",
+                "PENDING_CONFIRMATION",
                 "COMPLETED"
             ],
             default: "REPORTED"
@@ -57,7 +80,52 @@ const maintenanceSchema =
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User"
-        }
+        },
+
+        assignedVendorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
+        },
+
+        assignedStaffId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
+        },
+
+        assignedAt: {
+            type: Date,
+            default: null
+        },
+
+        workLogs: [
+            {
+                status: {
+                    type: String,
+                    enum: ["ASSIGNED", "IN_PROGRESS", "PENDING_CONFIRMATION", "COMPLETED"],
+                    required: true
+                },
+                note: {
+                    type: String,
+                    default: ""
+                },
+                images: [
+                    {
+                        imageUrl: { type: String, required: true },
+                        publicId: { type: String, default: null }
+                    }
+                ],
+                updatedBy: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User"
+                },
+                createdAt: {
+                    type: Date,
+                    default: Date.now
+                }
+            }
+        ]
 
     }, {
         timestamps: true
@@ -71,6 +139,10 @@ maintenanceSchema.index({
 
 maintenanceSchema.index({
     status: 1
+});
+
+maintenanceSchema.index({
+    assignedStaffId: 1
 });
 
 export default mongoose.model(

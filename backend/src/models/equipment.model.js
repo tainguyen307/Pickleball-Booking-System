@@ -52,6 +52,12 @@ const equipmentSchema = new mongoose.Schema({
         min: 0
     },
 
+    maintenanceQuantity: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+
     damagedCount: {
         type: Number,
         default: 0
@@ -71,6 +77,18 @@ const equipmentSchema = new mongoose.Schema({
             "LOST"
         ],
         default: "AVAILABLE"
+    },
+
+    vendorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+
+    courtId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Court",
+        default: null
     }
 
 }, {

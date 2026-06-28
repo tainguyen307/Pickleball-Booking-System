@@ -7,6 +7,13 @@ const bookingSchema = new mongoose.Schema({
         unique: true
     },
 
+    // ✅ Fix #3: Lưu slotId để rollback chính xác đúng slot, tránh unlock nhầm slot của SubCourt khác
+    slotId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CourtSlot",
+        default: null
+    },
+
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -45,6 +52,34 @@ const bookingSchema = new mongoose.Schema({
     },
 
     equipmentPrice: {
+        type: Number,
+        default: 0
+    },
+
+    systemFee: {
+        type: Number,
+        default: 0
+    },
+
+    couponId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Coupon",
+        default: null
+    },
+
+    couponCode: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        default: null
+    },
+
+    pointDiscount: {
+        type: Number,
+        default: 0
+    },
+
+    pointsUsed: {
         type: Number,
         default: 0
     },
@@ -96,6 +131,11 @@ const bookingSchema = new mongoose.Schema({
 
     note: {
         type: String
+    },
+
+    isPrepared: {
+        type: Boolean,
+        default: false
     }
 
 }, {
@@ -122,6 +162,10 @@ bookingSchema.index({
 
 bookingSchema.index({
     paymentStatus: 1
+});
+
+bookingSchema.index({
+    createdAt: -1
 });
 
 

@@ -34,7 +34,7 @@ class UserRepository {
         return await User.findByIdAndUpdate(
             id,
             { $set: updateData },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         ).select("-password");
     }
 

@@ -3,6 +3,7 @@ import express from "express";
 import bookingController from "../controllers/booking.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 import { globalLimiter } from "../middlewares/rateLimiter.middleware.js";
+import { bookingCreateValidator, handleValidationErrors } from "../middlewares/validation.middleware.js";
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
 router.get("/equipments", globalLimiter, bookingController.getEquipments);
 
 // Cổng nổ đơn đặt lịch bắt buộc verify token
-router.post("/", globalLimiter, verifyToken, bookingController.createBooking);
+router.post("/", globalLimiter, verifyToken, bookingCreateValidator, handleValidationErrors, bookingController.createBooking);
 
 router.get("/my-bookings", globalLimiter, verifyToken, bookingController.getHistory);
 

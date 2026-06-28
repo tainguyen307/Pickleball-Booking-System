@@ -3,11 +3,13 @@ import bookingService from "../services/booking.service.js";
 
 class BookingController {
     /**
-     * API: GET /api/bookings/equipments (Lấy đồ cho khách chọn thuê)
+     * API: GET /api/bookings/equipments?courtId=xxx (Lấy đồ cho khách chọn thuê)
+     * ✅ Fix #10: Đọc courtId từ query để lọc thiết bị đúng theo sân
      */
     async getEquipments(req, res) {
         try {
-            const equipments = await bookingService.getAllAvailableEquipments();
+            const { courtId } = req.query; // courtId là optional, nếu không có thì lấy tất cả
+            const equipments = await bookingService.getAllAvailableEquipments(courtId || null);
             return res.status(200).json({
                 success: true,
                 equipments

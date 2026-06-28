@@ -20,7 +20,10 @@ const subCourtSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Chống tạo trùng tên sân nhỏ trong cùng một cụm sân lớn
-subCourtSchema.index({ courtId: 1, name: 1 }, { unique: true });
+// Chống tạo trùng tên sân nhỏ trong cùng một cụm sân lớn (chỉ áp dụng cho sân đang hoạt động/bảo trì, bỏ qua sân đã ẩn)
+subCourtSchema.index(
+    { courtId: 1, name: 1 },
+    { unique: true, partialFilterExpression: { status: { $ne: "HIDDEN" } } }
+);
 
 export default mongoose.model("SubCourt", subCourtSchema);

@@ -1,6 +1,7 @@
-// src/components/MainLayout.jsx
+// src/layouts/MainLayout.jsx
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore.js";
+import NotificationBell from "@/components/NotificationBell.jsx";
 
 export default function MainLayout() {
     const navigate = useNavigate();
@@ -12,61 +13,87 @@ export default function MainLayout() {
         navigate("/login");
     };
 
-    // Hàm xác định class cho NavLink dựa trên trạng thái active
     const getNavLinkClass = ({ isActive }) => {
-        return `px-4 py-1.5 rounded-full transition-all duration-200 font-medium ${
+        return `inline-flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-bold transition-all duration-200 ${
             isActive
-                ? "text-primary bg-primary/10 font-semibold"
-                : "text-on-surface-variant hover:text-primary hover:bg-primary/5"
+                ? "bg-white text-primary shadow-sm"
+                : "text-zinc-600 hover:text-primary hover:bg-white/50"
         }`;
     };
 
     return (
-        <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col">
-            {/* 🎯 TOP NAVIGATION - Modern Glassmorphism */}
-            <header className="fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline-variant/50 shadow-sm">
-                <div className="px-4 md:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-14 max-w-container-max mx-auto">
+        <div className="flex min-h-screen flex-col bg-[#fafbf9] text-zinc-900">
+            <header className="fixed top-0 z-50 w-full border-b border-zinc-200/50 bg-[#fafbf9]/80 backdrop-blur-md">
+                <div className="app-shell">
+                    <div className="flex h-16 items-center justify-between gap-4">
                         <Link to="/" className="group flex items-center gap-2.5">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-primary/20 rounded-xl blur-md group-hover:blur-lg transition-all opacity-0 group-hover:opacity-100" />
-                                <div className="relative bg-gradient-to-br from-primary/10 to-primary/5 p-2 rounded-xl group-hover:scale-105 transition-all duration-300">
-                                    <span className="material-symbols-outlined text-[22px] text-primary">sports_tennis</span>
-                                </div>
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-white shadow-sm transition-all duration-300 group-hover:scale-105">
+                                <span className="material-symbols-outlined text-[20px]">sports_tennis</span>
                             </div>
-                            <span className="text-xl font-black bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent tracking-tight">
-                                PickleballPro
-                            </span>
+                            <div className="hidden leading-none sm:block">
+                                <span className="block text-base font-bold tracking-tight text-zinc-900">PickleballPro</span>
+                                <span className="mt-0.5 block text-[10px] font-medium text-zinc-400">Court booking studio</span>
+                            </div>
                         </Link>
 
-                        <nav className="hidden md:flex items-center gap-0.5 font-body-md text-body-md">
+                        <nav className="hidden items-center gap-1 rounded-xl bg-zinc-100/70 p-1 md:flex">
                             <NavLink to="/" className={getNavLinkClass} end>
+                                <span className="material-symbols-outlined text-[17px]">home</span>
                                 Trang chủ
                             </NavLink>
                             <NavLink to="/courts" className={getNavLinkClass}>
+                                <span className="material-symbols-outlined text-[17px]">sports_tennis</span>
                                 Sân bóng
                             </NavLink>
+                            {isAuthenticated && (
+                                <NavLink to="/user/favorites" className={getNavLinkClass}>
+                                    <span className="material-symbols-outlined text-[17px]">favorite</span>
+                                    Yêu thích
+                                </NavLink>
+                            )}
+                            {isAuthenticated && (
+                                <NavLink to="/user/rewards" className={getNavLinkClass}>
+                                    <span className="material-symbols-outlined text-[17px]">workspace_premium</span>
+                                    Ưu đãi
+                                </NavLink>
+                            )}
                         </nav>
 
                         <div className="flex items-center gap-2">
                             {isAuthenticated && user ? (
                                 <div className="flex items-center gap-2">
-                                    <Link to={user.role === "ADMIN" ? "/admin/profile" : "/user/profile"} className="flex items-center gap-2 group hover:bg-surface-container p-1 rounded-full transition-all duration-200">
+                                    <button
+                                        onClick={() => navigate("/courts")}
+                                        className="hidden items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#0c623c] active:scale-[0.98] lg:inline-flex"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                                        Đặt sân
+                                    </button>
+                                    <NotificationBell />
+                                    <Link
+                                        to={user.role === "ADMIN" ? "/admin" : "/user/profile"}
+                                        className="group flex items-center gap-2 rounded-xl border border-zinc-200 bg-white p-1 pr-3 transition-all duration-200 hover:border-primary/20 hover:bg-zinc-50"
+                                    >
                                         <div className="relative">
                                             <img
                                                 src={user.avatar || "https://api.dicebear.com/7.x/adventurer/svg?seed=pickle"}
-                                                alt="avatar"
-                                                className="w-8 h-8 rounded-full border-2 border-primary/30 object-cover group-hover:border-primary/70 transition-all duration-300"
+                                                alt={user.fullName || "User avatar"}
+                                                className="h-8 w-8 rounded-lg border border-zinc-200 object-cover"
                                             />
-                                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white"></div>
+                                            <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-white bg-emerald-500" />
                                         </div>
-                                        <span className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors hidden sm:inline">
-                                            {user.fullName?.split(" ")[0] || user.fullName}
+                                        <span className="hidden leading-tight sm:block text-left">
+                                            <span className="block max-w-24 truncate text-xs font-bold text-zinc-700 group-hover:text-primary">
+                                                {user.fullName || "Người dùng"}
+                                            </span>
+                                            <span className="block text-[9px] font-semibold text-zinc-400">
+                                                {user.role === "ADMIN" ? "Admin" : "Người chơi"}
+                                            </span>
                                         </span>
                                     </Link>
                                     <button
                                         onClick={handleLogout}
-                                        className="p-2 rounded-full text-outline hover:text-rose-500 hover:bg-rose-50 transition-all duration-200"
+                                        className="grid h-9 w-9 place-items-center rounded-xl text-zinc-400 transition-all duration-200 hover:bg-red-50 hover:text-red-500 active:scale-[0.96]"
                                         title="Đăng xuất"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -76,15 +103,12 @@ export default function MainLayout() {
                                 <>
                                     <button
                                         onClick={() => navigate("/login")}
-                                        className="hidden md:block px-4 py-1.5 rounded-full text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-all duration-200 font-label-md text-label-md font-medium"
+                                        className="hidden rounded-xl px-4 py-2 text-sm font-bold text-zinc-600 transition-all duration-200 hover:text-primary md:block"
                                     >
-                                        Sign In
+                                        Đăng nhập
                                     </button>
-                                    <button
-                                        onClick={() => navigate("/register")}
-                                        className="bg-primary text-on-primary px-5 py-1.5 rounded-full font-label-md text-label-md hover:shadow-md hover:shadow-primary/25 hover:scale-105 active:scale-95 transition-all duration-200 font-semibold"
-                                    >
-                                        Book Now
+                                    <button onClick={() => navigate("/register")} className="btn-primary px-4 py-2 text-xs">
+                                        Đặt sân
                                     </button>
                                 </>
                             )}
@@ -94,60 +118,52 @@ export default function MainLayout() {
             </header>
 
             {/* 🌟 MAIN CONTENT */}
-            <main className="pt-14 flex-grow">
+            <main className="flex-grow pt-24 md:pt-16">
                 <Outlet />
             </main>
 
-            {/* 📜 MODERN MINIMAL FOOTER */}
-            <footer className="w-full py-12 mt-auto bg-surface-container border-t border-outline-variant/40">
-                <div className="px-4 md:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-container-max mx-auto">
+            <footer className="mt-auto w-full border-t border-zinc-200/60 bg-white py-12">
+                <div className="app-shell">
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
                         <div className="col-span-1 md:col-span-1">
                             <div className="flex items-center gap-2 mb-4">
-                                <div className="bg-primary/10 p-1.5 rounded-lg">
-                                    <span className="material-symbols-outlined text-primary text-[20px]">sports_tennis</span>
+                                <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-white">
+                                    <span className="material-symbols-outlined text-[19px]">sports_tennis</span>
                                 </div>
-                                <span className="text-lg font-black bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                                <span className="text-base font-bold text-zinc-900">
                                     PickleballPro
                                 </span>
                             </div>
-                            <p className="text-sm text-on-surface-variant/70 leading-relaxed">
-                                Elevating the sport of pickleball through technology and community excellence.
+                            <p className="text-sm text-zinc-400 leading-relaxed">
+                                Đặt sân, thanh toán, thuê dụng cụ và theo dõi lịch chơi trong một trải nghiệm gọn gàng.
                             </p>
                         </div>
                         <div>
-                            <h5 className="text-xs font-bold uppercase tracking-wider mb-4 text-on-surface/60">Company</h5>
+                            <h5 className="mb-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Hệ thống</h5>
                             <ul className="space-y-2 text-sm">
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">About Us</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Careers</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Facility Rules</a></li>
+                                <li><Link className="text-zinc-500 transition-colors duration-200 hover:text-primary" to="/courts">Danh sách sân</Link></li>
+                                <li><Link className="text-zinc-500 transition-colors duration-200 hover:text-primary" to="/user/favorites">Yêu thích</Link></li>
+                                <li><Link className="text-zinc-500 transition-colors duration-200 hover:text-primary" to="/user/profile">Hồ sơ</Link></li>
                             </ul>
                         </div>
                         <div>
-                            <h5 className="text-xs font-bold uppercase tracking-wider mb-4 text-on-surface/60">Support</h5>
+                            <h5 className="mb-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Hỗ trợ</h5>
                             <ul className="space-y-2 text-sm">
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Contact Support</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Terms of Service</a></li>
-                                <li><a className="text-on-surface-variant/70 hover:text-primary transition-colors duration-200" href="#">Privacy Policy</a></li>
+                                <li><Link className="text-zinc-500 transition-colors duration-200 hover:text-primary" to="/courts">Liên hệ sân</Link></li>
+                                <li><Link className="text-zinc-500 transition-colors duration-200 hover:text-primary" to="/login">Điều khoản sử dụng</Link></li>
+                                <li><Link className="text-zinc-500 transition-colors duration-200 hover:text-primary" to="/login">Chính sách bảo mật</Link></li>
                             </ul>
                         </div>
                         <div>
-                            <h5 className="text-xs font-bold uppercase tracking-wider mb-4 text-on-surface/60">Follow Us</h5>
-                            <div className="flex gap-2">
-                                <a className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white hover:-translate-y-0.5 transition-all duration-200" href="#">
-                                    <span className="material-symbols-outlined text-[18px]">language</span>
-                                </a>
-                                <a className="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-primary hover:text-white hover:-translate-y-0.5 transition-all duration-200" href="#">
-                                    <span className="material-symbols-outlined text-[18px]">smart_display</span>
-                                </a>
-                            </div>
+                            <h5 className="mb-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Giờ vận hành</h5>
+                            <p className="text-sm text-zinc-400 leading-relaxed">Hệ thống đặt sân hoạt động 24/7. Từng cụm sân có giờ mở cửa riêng trong trang chi tiết.</p>
                         </div>
                     </div>
-                    <div className="max-w-container-max mx-auto mt-8 pt-6 border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-3">
-                        <p className="text-xs text-on-surface-variant/60">© {new Date().getFullYear()} PickleballPro Management. All rights reserved.</p>
-                        <div className="flex gap-6 text-xs text-on-surface-variant/60">
-                            <span className="hover:text-primary hover:cursor-pointer transition-colors">Global Rankings</span>
-                            <span className="hover:text-primary hover:cursor-pointer transition-colors">Find a Coach</span>
+                    <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-zinc-200/50 pt-6 md:flex-row">
+                        <p className="text-xs text-zinc-400">© {new Date().getFullYear()} PickleballPro Management.</p>
+                        <div className="flex gap-6 text-xs text-zinc-400">
+                            <span>Realtime booking</span>
+                            <span>Verified reviews</span>
                         </div>
                     </div>
                 </div>
