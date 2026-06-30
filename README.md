@@ -40,16 +40,16 @@ The Pickleball Booking System is a multi-tenant platform designed to facilitate 
 ### High-Level Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Frontend (React + Vite)                    │
-│  ├─ Components       ├─ Features       ├─ Services      └─ Hooks │
+┌───────────────────────────────────────────────────────────────────┐
+│                      Frontend (React + Vite)                      │
+│  ├─ Components       ├─ Features       ├─ Services      └─ Hooks  │
 └────────────────────────┬──────────────────────────────────────────┘
                          │ HTTP/REST API + JWT Auth
                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Backend (Express.js)                          │
-│  ├─ Routes          ├─ Controllers    ├─ Services              │
-│  └─ Middlewares     └─ Repositories   └─ Models (Mongoose)    │
+┌───────────────────────────────────────────────────────────────────┐
+│                   Backend (Express.js)                            │
+│  ├─ Routes          ├─ Controllers    ├─ Services                 │
+│  └─ Middlewares     └─ Repositories   └─ Models (Mongoose)        │
 └────────────────────────┬──────────────────────────────────────────┘
                   ┌──────┴──────┐
                   ▼             ▼
