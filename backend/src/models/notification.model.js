@@ -34,7 +34,8 @@ const notificationSchema =
                 "REVIEW",
                 "COUPON",
                 "POINT",
-                "SYSTEM"
+                "SYSTEM",
+                "IMPORT_ORDER"
             ],
             default: "BOOKING"
         },

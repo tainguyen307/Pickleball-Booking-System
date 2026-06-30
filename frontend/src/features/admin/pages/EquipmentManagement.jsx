@@ -46,6 +46,7 @@ const EquipmentFormModal = ({ equipment, onClose, onSave }) => {
     });
     const [imageFile, setImageFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(equipment?.image || "");
+    const [removeImage, setRemoveImage] = useState(false);
     const [vendors, setVendors] = useState([]);
     const [courts, setCourts] = useState([]);
     const [loadingVendors, setLoadingVendors] = useState(false);
@@ -109,6 +110,8 @@ const EquipmentFormModal = ({ equipment, onClose, onSave }) => {
             }
             if (imageFile) {
                 formData.append("image", imageFile);
+            } else if (removeImage) {
+                formData.append("image", "");
             } else if (form.image) {
                 formData.append("image", form.image);
             }
@@ -258,13 +261,31 @@ const EquipmentFormModal = ({ equipment, onClose, onSave }) => {
                                 if (file) {
                                     setImageFile(file);
                                     setPreviewUrl(URL.createObjectURL(file));
+                                    setRemoveImage(false);
                                 }
                             }}
                             className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-xs"
                         />
                         {previewUrl && (
-                            <div className="mt-2 relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
-                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="mt-2 flex items-center gap-3">
+                                <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 flex-shrink-0">
+                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPreviewUrl("");
+                                        setImageFile(null);
+                                        setRemoveImage(true);
+                                        setForm(f => ({ ...f, image: "" }));
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-lg border border-red-200 transition-colors"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Xóa ảnh
+                                </button>
                             </div>
                         )}
                     </div>

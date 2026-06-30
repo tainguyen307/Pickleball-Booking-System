@@ -56,8 +56,24 @@ function StarRating({ value, onChange, size = 32, readonly = false }) {
 function ReviewModal({ booking, onClose, onSuccess }) {
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState("");
+    const [images, setImages] = useState([]);
+    const [previews, setPreviews] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files || []);
+        const combined = [...images, ...files].slice(0, 5);
+        setImages(combined);
+        setPreviews(combined.map(f => URL.createObjectURL(f)));
+        e.target.value = "";
+    };
+
+    const handleRemoveImage = (idx) => {
+        const next = images.filter((_, i) => i !== idx);
+        setImages(next);
+        setPreviews(next.map(f => URL.createObjectURL(f)));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -65,12 +81,24 @@ function ReviewModal({ booking, onClose, onSuccess }) {
         setSubmitting(true);
         setError("");
         try {
-            await reviewService.createReview({
-                courtId: booking.courtId?._id || booking.courtId,
-                bookingId: booking._id,
-                rating,
-                comment,
-            });
+            let payload;
+            if (images.length > 0) {
+                const fd = new FormData();
+                fd.append("courtId", booking.courtId?._id || booking.courtId);
+                fd.append("bookingId", booking._id);
+                fd.append("rating", rating);
+                fd.append("comment", comment);
+                images.forEach(img => fd.append("images", img));
+                payload = fd;
+            } else {
+                payload = {
+                    courtId: booking.courtId?._id || booking.courtId,
+                    bookingId: booking._id,
+                    rating,
+                    comment,
+                };
+            }
+            await reviewService.createReview(payload);
             onSuccess();
         } catch (err) {
             setError(err?.response?.data?.message || "Gửi đánh giá thất bại. Vui lòng thử lại!");
@@ -148,6 +176,42 @@ function ReviewModal({ booking, onClose, onSuccess }) {
                         <p className="text-[11px] text-gray-400 text-right">{comment.length}/1500</p>
                     </div>
 
+                    {/* Image upload */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                            Ảnh thực tế{" "}
+                            <span className="text-gray-400 font-normal">(tùy chọn, tối đa 5 ảnh)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer w-max px-4 py-2 border border-dashed border-gray-300 rounded-xl hover:border-primary hover:bg-primary/5 transition-colors text-sm text-gray-500 hover:text-primary">
+                            <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+                            Chọn ảnh
+                            <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={handleImageChange}
+                                disabled={images.length >= 5}
+                            />
+                        </label>
+                        {previews.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {previews.map((src, idx) => (
+                                    <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 group">
+                                        <img src={src} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveImage(idx)}
+                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <span className="material-symbols-outlined text-white text-[18px]">close</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Points reward notice */}
                     <div className="flex items-center gap-2.5 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
                         <span className="material-symbols-outlined text-primary text-[22px]">redeem</span>
@@ -202,6 +266,149 @@ function ReviewedBadge({ review }) {
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg">
             <StarRating value={review.rating} size={14} readonly />
             <span className="text-[11px] font-semibold text-amber-700">Đã đánh giá</span>
+        </div>
+    );
+}
+
+// ─── Repay Modal ──────────────────────────────────────────────────────────────
+function RepayModal({ booking, onClose, onSuccess }) {
+    const [paymentData, setPaymentData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [verifying, setVerifying] = useState(false);
+    const [verified, setVerified] = useState(false);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        userService.getPaymentIntent(booking._id)
+            .then(res => {
+                if (res.success) {
+                    setPaymentData({
+                        qrCodeUrl: res.qrCodeUrl,
+                        paymentDescription: res.paymentDescription,
+                        totalPrice: booking.totalPrice,
+                        bookingCode: booking.bookingCode,
+                    });
+                } else {
+                    setPaymentData({
+                        qrCodeUrl: `https://img.vietqr.io/image/MB-0900000002-qr_only.png?amount=${booking.totalPrice}&addInfo=CHUYEN%20TIEN%20SAN%20${booking.bookingCode}`,
+                        paymentDescription: `CHUYEN TIEN SAN ${booking.bookingCode}`,
+                        totalPrice: booking.totalPrice,
+                        bookingCode: booking.bookingCode,
+                    });
+                }
+            })
+            .catch(() => {
+                setPaymentData({
+                    qrCodeUrl: `https://img.vietqr.io/image/MB-0900000002-qr_only.png?amount=${booking.totalPrice}&addInfo=CHUYEN%20TIEN%20SAN%20${booking.bookingCode}`,
+                    paymentDescription: `CHUYEN TIEN SAN ${booking.bookingCode}`,
+                    totalPrice: booking.totalPrice,
+                    bookingCode: booking.bookingCode,
+                });
+            })
+            .finally(() => setLoading(false));
+    }, [booking._id]);
+
+    const handleVerify = async () => {
+        setVerifying(true);
+        setError("");
+        try {
+            const res = await userService.confirmPayment(booking._id, "BANKING");
+            if (res.success) {
+                setVerified(true);
+                setTimeout(() => onSuccess(), 1500);
+            }
+        } catch (err) {
+            setError(err?.response?.data?.message || "Xác minh thất bại, vui lòng thử lại!");
+        } finally {
+            setVerifying(false);
+        }
+    };
+
+    const formatMoney = (n) => n?.toLocaleString("vi-VN") + "đ";
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white rounded-2xl shadow-soft w-full max-w-sm overflow-hidden animate-fadeIn">
+                {/* Header */}
+                <div className="bg-ink px-6 py-4 relative">
+                    <button onClick={onClose} className="absolute right-4 top-4 text-white/70 hover:text-white transition-colors">
+                        <span className="material-symbols-outlined text-[22px]">close</span>
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-white text-[20px]">qr_code_2</span>
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold">Thanh toán đơn đặt sân</h3>
+                            <p className="text-white/65 text-xs mt-0.5">#{booking.bookingCode}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-5 space-y-4 text-center">
+                    {loading ? (
+                        <div className="py-8 flex flex-col items-center gap-2">
+                            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent" />
+                            <p className="text-sm text-gray-400">Đang tải thông tin thanh toán...</p>
+                        </div>
+                    ) : verified ? (
+                        <div className="py-6 space-y-3">
+                            <div className="w-12 h-12 mx-auto bg-emerald-100 rounded-full flex items-center justify-center">
+                                <span className="material-symbols-outlined text-emerald-600 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            </div>
+                            <p className="font-bold text-gray-800">Xác nhận thanh toán thành công!</p>
+                            <p className="text-xs text-gray-500">Đơn đặt sân đã được xác nhận thanh toán.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                                Quét mã QR bằng ứng dụng ngân hàng để chuyển khoản thanh toán:
+                            </p>
+                            <div className="w-44 h-44 mx-auto border-2 border-emerald-100 rounded-2xl overflow-hidden p-1 shadow-inner bg-emerald-50">
+                                <img src={paymentData.qrCodeUrl} alt="VietQR" className="w-full h-full object-contain" />
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded-xl text-xs font-semibold text-gray-600 space-y-1.5 border border-gray-100 text-left">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Ngân hàng:</span>
+                                    <span>MB Bank (Quân Đội)</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Số tài khoản:</span>
+                                    <span className="text-primary font-bold">0900000002</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Số tiền:</span>
+                                    <span className="text-red-500 font-bold">{formatMoney(paymentData.totalPrice)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Nội dung CK:</span>
+                                    <span className="text-primary font-bold select-all">{paymentData.paymentDescription}</span>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Lưu ý: Nội dung chuyển khoản phải ghi chính xác để hệ thống tự động duyệt.</p>
+                            {error && (
+                                <p className="text-xs text-red-500 font-semibold bg-red-50 px-3 py-2 rounded-xl border border-red-200">{error}</p>
+                            )}
+                            <div className="flex gap-3">
+                                <button type="button" onClick={onClose}
+                                    className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl text-xs hover:bg-gray-50 transition-all">
+                                    Đóng
+                                </button>
+                                <button type="button" onClick={handleVerify} disabled={verifying}
+                                    className="flex-1 py-2.5 bg-primary text-white font-bold rounded-xl text-xs hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all shadow-sm shadow-primary/20">
+                                    {verifying ? "Đang xác minh..." : (
+                                        <><span className="material-symbols-outlined text-[15px] animate-spin">autorenew</span>Xác minh thanh toán</>
+                                    )}
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
@@ -395,11 +602,12 @@ function BookingDetailModal({ booking, onClose }) {
 }
 
 // ─── Sub-component: Booking Card ──────────────────────────────────────────────
-function BookingCard({ booking, onCancel, onReview, onViewDetail }) {
+function BookingCard({ booking, onCancel, onReview, onRepay, onViewDetail }) {
     const status = statusConfig[booking.status] || { label: booking.status, cls: "bg-gray-100 text-gray-600" };
     const payment = paymentConfig[booking.paymentStatus] || { label: booking.paymentStatus, cls: "bg-gray-100 text-gray-600" };
     const canCancel = !["CANCELLED", "COMPLETED"].includes(booking.status);
     const canReview = booking.status === "COMPLETED" && booking.paymentStatus === "PAID";
+    const canRepay = booking.paymentStatus === "UNPAID" && booking.status !== "CANCELLED";
     const formatMoney = (n) => n?.toLocaleString("vi-VN") + "đ";
 
     return (
@@ -429,6 +637,15 @@ function BookingCard({ booking, onCancel, onReview, onViewDetail }) {
                         Chi tiết
                     </button>
                     {/* Nút đánh giá */}
+                    {canRepay && (
+                        <button
+                            onClick={() => onRepay(booking)}
+                            className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-[15px]">payments</span>
+                            Thanh toán ngay
+                        </button>
+                    )}
                     {canReview && !booking._review && (
                         <button
                             onClick={() => onReview(booking)}
@@ -521,6 +738,7 @@ export default function UserProfile() {
     const [reviewTarget, setReviewTarget] = useState(null); // booking đang muốn review
     const [reviewSuccess, setReviewSuccess] = useState(false);
     const [detailTarget, setDetailTarget] = useState(null);
+    const [payingBooking, setPayingBooking] = useState(null);
 
     // Edit form state
     const [editForm, setEditForm] = useState({ fullName: "", phone: "" });
@@ -970,6 +1188,7 @@ export default function UserProfile() {
                                             booking={booking}
                                             onCancel={handleCancelBooking}
                                             onReview={setReviewTarget}
+                                            onRepay={setPayingBooking}
                                             onViewDetail={setDetailTarget}
                                         />
                                     ))}
@@ -996,6 +1215,15 @@ export default function UserProfile() {
                 <BookingDetailModal
                     booking={detailTarget}
                     onClose={() => setDetailTarget(null)}
+                />
+            )}
+
+            {/* ─── Repay Modal ───────────────────────────────────────── */}
+            {payingBooking && (
+                <RepayModal
+                    booking={payingBooking}
+                    onClose={() => setPayingBooking(null)}
+                    onSuccess={() => { setPayingBooking(null); fetchBookings(); }}
                 />
             )}
         </div>

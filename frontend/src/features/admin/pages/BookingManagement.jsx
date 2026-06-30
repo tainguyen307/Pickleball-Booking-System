@@ -454,14 +454,14 @@ export default function BookingManagement() {
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Mã đơn</th>
-                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Khách hàng</th>
-                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Sân</th>
-                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Ngày & Giờ</th>
-                                    <th className="text-right py-3 px-4 text-xs font-bold text-gray-500">Tổng tiền</th>
-                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Thanh toán</th>
-                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Trạng thái</th>
-                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Hành động</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Mã đơn</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Khách hàng</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Sân</th>
+                                    <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Ngày & Giờ</th>
+                                    <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Tổng tiền</th>
+                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Thanh toán</th>
+                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Trạng thái</th>
+                                    <th className="text-center py-3 px-4 text-xs font-bold text-gray-500 whitespace-nowrap">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -470,25 +470,25 @@ export default function BookingManagement() {
                                     const pm = paymentConfig[b.paymentStatus] || { label: b.paymentStatus, cls: "bg-gray-100 text-gray-600" };
                                     return (
                                         <tr key={b._id} className="hover:bg-gray-50/60 transition-colors">
-                                            <td className="py-3.5 px-4 font-mono text-xs font-bold text-gray-600">{b.bookingCode}</td>
+                                            <td className="py-3.5 px-4 font-mono text-xs font-bold text-gray-600 whitespace-nowrap">{b.bookingCode}</td>
                                             <td className="py-3.5 px-4">
-                                                <p className="font-semibold text-gray-800">{b.userId?.fullName || "N/A"}</p>
+                                                <p className="font-semibold text-gray-800 whitespace-nowrap">{b.userId?.fullName || "N/A"}</p>
                                                 <p className="text-xs text-gray-400">{b.userId?.email}</p>
                                             </td>
                                             <td className="py-3.5 px-4 text-gray-600 font-medium">{b.courtId?.name || "N/A"}</td>
-                                            <td className="py-3.5 px-4">
+                                            <td className="py-3.5 px-4 whitespace-nowrap">
                                                 <p className="font-semibold text-gray-700">{b.bookingDate}</p>
                                                 <p className="text-xs text-gray-400">{b.startTime} – {b.endTime}</p>
                                             </td>
-                                            <td className="py-3.5 px-4 text-right font-black text-gray-800">{formatMoney(b.totalPrice)}</td>
+                                            <td className="py-3.5 px-4 text-right font-black text-gray-800 whitespace-nowrap">{formatMoney(b.totalPrice)}</td>
                                             <td className="py-3.5 px-4 text-center">
-                                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${pm.cls}`}>{pm.label}</span>
+                                                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${pm.cls}`}>{pm.label}</span>
                                             </td>
                                             <td className="py-3.5 px-4 text-center">
-                                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${st.cls}`}>{st.label}</span>
+                                                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${st.cls}`}>{st.label}</span>
                                             </td>
                                             <td className="py-3.5 px-4">
-                                                <div className="flex items-center justify-center gap-1">
+                                                <div className="flex items-center justify-center gap-1 flex-nowrap">
                                                     {/* Duyệt */}
                                                     {b.status === "PENDING" && (
                                                         <button
