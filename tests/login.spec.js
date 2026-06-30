@@ -58,4 +58,44 @@ test('Admin Full Flow Navigation Test', async ({ page }) => {
     await page.getByRole('link', { name: 'account_circle Hồ sơ' }).click();
     await expect(page).toHaveURL(/.*profile/);
     await expect(page.getByRole('heading', { name: 'Hồ sơ quản trị viên' })).toBeVisible();
-});
+});
+
+
+test('Admin Full Flow Navigation Automated Test', async ({ page }) => {
+  await page.goto('http://localhost:5173/');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await page.getByRole('textbox', { name: 'name@club.com' }).click();
+  await page.getByRole('textbox', { name: 'name@club.com' }).fill('admin@gmail.com');
+  await page.getByRole('textbox', { name: 'name@club.com' }).press('Tab');
+  await page.getByRole('textbox', { name: 'Nhập mật khẩu' }).fill('123456');
+  await page.locator('form').getByRole('button', { name: 'Đăng nhập' }).click();
+  await page.getByRole('link', { name: 'sports_tennis Sân' }).click();
+  await page.getByRole('link', { name: 'event_available Booking' }).click();
+  await page.getByRole('link', { name: 'inventory_2 Thiết bị' }).click();
+  await page.getByRole('button', { name: 'Đơn nhập kho (Từ Vendor)' }).click();
+  await page.getByRole('link', { name: 'build Bảo trì' }).click();
+  await page.getByRole('link', { name: 'group Người dùng' }).click();
+  await page.getByRole('link', { name: 'sell Mã giảm giá' }).click();
+  await page.getByRole('link', { name: 'rate_review Đánh giá' }).click();
+  await page.getByRole('link', { name: 'account_circle Hồ sơ' }).click();
+  await page.getByRole('link', { name: 'settings Cấu hình' }).click();
+  await page.getByRole('button', { name: 'notifications' }).click();
+  await page.getByRole('button', { name: 'logout Đăng xuất' }).click();
+});
+
+test('User Full Flow Navigation Automated Test', async ({ page }) => {
+  await page.goto('http://localhost:5173/');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await page.getByRole('textbox', { name: 'name@club.com' }).click();
+  await page.getByRole('textbox', { name: 'name@club.com' }).fill('user1@gmail.com');
+  await page.getByRole('textbox', { name: 'Nhập mật khẩu' }).click();
+  await page.getByRole('textbox', { name: 'Nhập mật khẩu' }).fill('123456');
+  await page.locator('form').getByRole('button', { name: 'Đăng nhập' }).click();
+  await page.getByRole('link', { name: 'sports_tennis Sân bóng' }).click();
+  await page.getByRole('link', { name: 'favorite Yêu thích' }).click();
+  await page.getByRole('link', { name: 'workspace_premium Ưu đãi' }).click();
+  await page.getByRole('button', { name: 'notifications' }).click();
+  await page.getByRole('link', { name: 'user1 user1 Người chơi' }).click();
+  await page.getByRole('button', { name: 'add_circle Đặt sân', exact: true }).click();
+  await page.getByRole('button', { name: 'logout' }).click();
+});
