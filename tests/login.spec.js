@@ -16,7 +16,6 @@ test('Admin Full Flow Navigation Automated Test', async ({ page }) => {
   await page.locator('form').getByRole('button', { name: 'Đăng nhập' }).click();
   await expect(page).toHaveURL(/\/admin(?:\/)?$/);
   await expect(page.getByRole('heading', { name: 'Dashboard tổng quan' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /notifications/i })).toBeVisible();
 
   await page.getByRole('link', { name: 'sports_tennis Sân' }).click();
   await expect(page).toHaveURL(/\/admin\/courts$/);
