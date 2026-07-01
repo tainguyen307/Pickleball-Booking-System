@@ -299,6 +299,13 @@ class AdminService {
             throw new Error(`Chỉ có thể hoàn tất đơn CONFIRMED! Hiện tại: ${booking.status}`);
         }
 
+        // Kiểm tra giờ kết thúc đã qua chưa (theo múi giờ Việt Nam)
+        const nowVN = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+        const bookingEndStr = `${booking.bookingDate} ${booking.endTime}:00`;
+        if (bookingEndStr > nowVN) {
+            throw new Error(`Chưa thể hoàn tất đơn này! Lượt chơi kết thúc lúc ${booking.endTime} ngày ${booking.bookingDate}, hãy đợi hết giờ.`);
+        }
+
         booking.status = "COMPLETED";
         await booking.save();
 

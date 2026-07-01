@@ -500,15 +500,21 @@ export default function BookingManagement() {
                                                         </button>
                                                     )}
                                                     {/* Hoàn tất */}
-                                                    {b.status === "CONFIRMED" && b.paymentStatus === "PAID" && (
-                                                        <button
-                                                            onClick={() => handleComplete(b._id)}
-                                                            title="Hoàn tất"
-                                                            className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[18px]">task_alt</span>
-                                                        </button>
-                                                    )}
+                                                    {b.status === "CONFIRMED" && b.paymentStatus === "PAID" && (() => {
+                                                        const nowVN = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" });
+                                                        const bookingEndStr = `${b.bookingDate} ${b.endTime}:00`;
+                                                        const canComplete = bookingEndStr <= nowVN;
+                                                        return (
+                                                            <button
+                                                                onClick={() => canComplete && handleComplete(b._id)}
+                                                                disabled={!canComplete}
+                                                                title={canComplete ? "Hoàn tất đơn" : `Chờ hết giờ: ${b.endTime} ngày ${b.bookingDate}`}
+                                                                className={`p-1.5 rounded-lg transition-colors ${canComplete ? "hover:bg-emerald-50 text-emerald-600 cursor-pointer" : "text-gray-300 cursor-not-allowed"}`}
+                                                            >
+                                                                <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                                                            </button>
+                                                        );
+                                                    })()}
                                                     {/* Hủy */}
                                                     {!["CANCELLED", "COMPLETED"].includes(b.status) && (
                                                         <button

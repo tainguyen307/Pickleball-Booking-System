@@ -29,11 +29,6 @@ export default function VendorLayout() {
                       icon: "sports_tennis",
                   },
                   {
-                      path: "/vendor/bookings",
-                      label: "Đơn đặt sân",
-                      icon: "receipt_long",
-                  },
-                  {
                       path: "/vendor/reviews",
                       label: "Đánh giá",
                       icon: "star",

@@ -18,6 +18,111 @@ import bookingService from "./booking.service.js";
 class VendorService {
     // 1. Thống kê Vendor Dashboard
     async getVendorStats(vendorId) {
+        // Xác định vendorType để trả đúng loại thống kê
+        const vendor = await User.findById(vendorId).select("vendorType");
+        const vendorType = vendor?.vendorType || "EQUIPMENT";
+
+        if (vendorType === "COURT") {
+            return this._getCourtVendorStats(vendorId);
+        } else {
+            return this._getEquipmentVendorStats(vendorId);
+        }
+    }
+
+    // 1a. Thống kê cho chủ sân (COURT vendor)
+    async _getCourtVendorStats(vendorId) {
+        // Lấy danh sách sân của vendor này
+        const courts = await Court.find({ vendorId }).select("_id");
+        const courtIds = courts.map(c => c._id);
+
+        if (courtIds.length === 0) {
+            return {
+                vendorType: "COURT",
+                totalCourts: 0,
+                totalSubCourts: 0,
+                totalBookings: 0,
+                pendingBookings: 0,
+                confirmedBookings: 0,
+                completedBookings: 0,
+                cancelledBookings: 0,
+                totalRevenue: 0,
+                averageRating: 0,
+                totalReviews: 0,
+                monthlyRevenue: []
+            };
+        }
+
+        const currentYear = new Date().getFullYear();
+        const startOfYear = new Date(`${currentYear}-01-01T00:00:00.000Z`);
+        const endOfYear = new Date(`${currentYear}-12-31T23:59:59.999Z`);
+
+        const [
+            totalSubCourts,
+            totalBookings,
+            pendingBookings,
+            confirmedBookings,
+            completedBookings,
+            cancelledBookings,
+            revenueResult,
+            reviewResult,
+            monthlyRevenueRaw
+        ] = await Promise.all([
+            SubCourt.countDocuments({ courtId: { $in: courtIds } }),
+            Booking.countDocuments({ courtId: { $in: courtIds } }),
+            Booking.countDocuments({ courtId: { $in: courtIds }, status: "PENDING" }),
+            Booking.countDocuments({ courtId: { $in: courtIds }, status: "CONFIRMED" }),
+            Booking.countDocuments({ courtId: { $in: courtIds }, status: "COMPLETED" }),
+            Booking.countDocuments({ courtId: { $in: courtIds }, status: "CANCELLED" }),
+            Booking.aggregate([
+                { $match: { courtId: { $in: courtIds }, status: "COMPLETED", paymentStatus: "PAID" } },
+                { $group: { _id: null, total: { $sum: "$totalPrice" } } }
+            ]),
+            Review.aggregate([
+                { $match: { courtId: { $in: courtIds } } },
+                { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+            ]),
+            Booking.aggregate([
+                {
+                    $match: {
+                        courtId: { $in: courtIds },
+                        status: "COMPLETED",
+                        paymentStatus: "PAID",
+                        createdAt: { $gte: startOfYear, $lte: endOfYear }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $substr: ["$createdAt", 5, 2] },
+                        revenue: { $sum: "$totalPrice" },
+                        bookings: { $sum: 1 }
+                    }
+                },
+                { $sort: { _id: 1 } }
+            ])
+        ]);
+
+        return {
+            vendorType: "COURT",
+            totalCourts: courtIds.length,
+            totalSubCourts,
+            totalBookings,
+            pendingBookings,
+            confirmedBookings,
+            completedBookings,
+            cancelledBookings,
+            totalRevenue: revenueResult[0]?.total || 0,
+            averageRating: reviewResult[0]?.avgRating ? Math.round(reviewResult[0].avgRating * 10) / 10 : 0,
+            totalReviews: reviewResult[0]?.count || 0,
+            monthlyRevenue: monthlyRevenueRaw.map(item => ({
+                month: `Tháng ${item._id}`,
+                revenue: item.revenue,
+                bookings: item.bookings
+            }))
+        };
+    }
+
+    // 1b. Thống kê cho nhà cung cấp thiết bị (EQUIPMENT vendor)
+    async _getEquipmentVendorStats(vendorId) {
         const [totalOrders, pendingOrdersCount, confirmedOrdersCount, completedOrdersCount, totalSuppliedResult] = await Promise.all([
             ImportOrder.countDocuments({ vendorId }),
             ImportOrder.countDocuments({ vendorId, status: "PENDING" }),
@@ -57,6 +162,7 @@ class VendorService {
         ]);
 
         return {
+            vendorType: "EQUIPMENT",
             totalOrders,
             pendingOrdersCount,
             confirmedOrdersCount,
