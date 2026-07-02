@@ -22,7 +22,24 @@ const CourtFormModal = ({ court, onClose, onSave }) => {
         amenities: court?.amenities?.join(", ") || "",
     });
     const [files, setFiles] = useState([]);
+    const [existingImages, setExistingImages] = useState(court?.images || []);
     const [saving, setSaving] = useState(false);
+    const [deletingImageId, setDeletingImageId] = useState(null);
+
+    const handleDeleteImage = async (publicId) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa hình ảnh này? Hành động này không thể hoàn tác.")) {
+            return;
+        }
+        setDeletingImageId(publicId);
+        try {
+            await adminService.deleteCourtImage(court._id, publicId);
+            setExistingImages(prev => prev.filter(img => img.publicId !== publicId));
+        } catch (err) {
+            alert(err?.response?.data?.message || err.message || "Không thể xóa ảnh!");
+        } finally {
+            setDeletingImageId(null);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -162,10 +179,30 @@ const CourtFormModal = ({ court, onClose, onSave }) => {
                             onChange={(e) => setFiles(Array.from(e.target.files))}
                             className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                         />
-                        {court?.images?.length > 0 && (
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                                {court.images.map((img, idx) => (
-                                    <img key={idx} src={img.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover border" />
+                        {existingImages.length > 0 && (
+                            <div className="flex gap-4 mt-3 flex-wrap">
+                                {existingImages.map((img, idx) => (
+                                    <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                                        <img src={img.imageUrl} alt="" className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            disabled={deletingImageId === img.publicId}
+                                            onClick={() => handleDeleteImage(img.publicId)}
+                                            className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md flex items-center justify-center disabled:opacity-50"
+                                            title="Xóa ảnh"
+                                        >
+                                            {deletingImageId === img.publicId ? (
+                                                <svg className="animate-spin w-3 h-3 text-white" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -456,7 +493,7 @@ export default function CourtManagement() {
             {showModal && (
                 <CourtFormModal
                     court={editingCourt}
-                    onClose={() => { setShowModal(false); setEditingCourt(null); }}
+                    onClose={() => { setShowModal(false); setEditingCourt(null); fetchCourts(); }}
                     onSave={handleSaved}
                 />
             )}
